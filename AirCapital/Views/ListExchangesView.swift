@@ -8,8 +8,22 @@
 import SwiftUI
 
 struct ListExchangesView: View {
+    
+    @State private var userDataBinance = UserDataBinance.example
+    
+    var totalBalance: Double {
+        userDataBinance
+            .compactMap { Double($0.balance) }
+            .reduce(0, +)
+    }
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        HStack {
+            Text("Binence")
+            Spacer()
+            Text("\(totalBalance, specifier: "%.2f")")
+        }
+        .padding()
     }
 }
 
