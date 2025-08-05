@@ -6,3 +6,6 @@
 //
 
 import Foundation
+
+let apiKey = ""
+let secretKey = ""
