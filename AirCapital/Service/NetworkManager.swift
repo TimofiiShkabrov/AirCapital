@@ -23,29 +23,26 @@ enum NetworkError: Error {
     case noData
     case decodingError
     case tooManyRequests
+    case limitWAF
+    case cancelReplace
+    case bannedIP
+    case malformedRequests
+    case exchengeError
+    case unknownError
 }
 
-@Observable
-final class NetworkManager {
-    
-    init() {}
-    
-    static let shared = NetworkManager()
-    
-    var userDataBinance = [UserDataBinance]()
-    
-    func fetchUserDataBinance(                completion: @escaping (Result<[UserDataBinance], NetworkError>) -> Void) {
-        // userDataBinance = UserDataBinance.example
-        
+private actor ServiceActor {
+    func loadUserDataBinance() async throws -> [UserDataBinance] {
         let timestamp = Date().timeIntervalSince1970 * 1000
         let recvWindow = 5000
-        
         let queryString = "timestamp=\(Int(timestamp))&recvWindow=\(recvWindow)"
         let signature = hmacSHA256(query: queryString, secret: secretKey)
         
         let fullURLString = "\(Link.userDataBinance.url.absoluteString)?\(queryString)&signature=\(signature)"
         
-        guard let url = URL(string: fullURLString) else { return }
+        guard let url = URL(string: fullURLString) else {
+            throw NetworkError.unknownError
+        }
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -53,30 +50,62 @@ final class NetworkManager {
         
         print("Fetching: \(url.absoluteString)")
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                print("Error: \(error.localizedDescription)")
-                completion(.failure(.noData))
-                return
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw NetworkError.unknownError
+        }
+        
+        switch httpResponse.statusCode {
+        case 200...299:
+            do {
+                let decoded = try JSONDecoder().decode([UserDataBinance].self, from: data)
+                print("HTTP response status code: \(httpResponse.statusCode)")
+                return decoded
+            } catch {
+                print("Decoding error: \(error)")
+                print("Raw response: \(String(data: data, encoding: .utf8) ?? "nil")")
+                throw NetworkError.decodingError
             }
-            
-            if let httpResponse = response as? HTTPURLResponse {
-                print("Status HTTP code: \(httpResponse.statusCode)")
-                if httpResponse.statusCode == 429 {
-                    completion(.failure(.tooManyRequests))
-                } else {
-                    guard let safeData = data else { return }
-                    do {
-                        let decoded = try JSONDecoder().decode([UserDataBinance].self, from: safeData)
-                        completion(.success(decoded))
-                        
-                    } catch {
-                        print("Decoding error: \(error)")
-                        print("Raw response: \(String(data: safeData, encoding: .utf8) ?? "nil")")
-                        completion(.failure(.decodingError))
-                    }
-                }
+        case 429:
+            throw NetworkError.tooManyRequests
+        case 403:
+            throw NetworkError.limitWAF
+        case 409:
+            throw NetworkError.cancelReplace
+        case 418:
+            throw NetworkError.bannedIP
+        case 400...402, 404...408, 410...418, 420...499:
+            throw NetworkError.malformedRequests
+        default:
+            throw NetworkError.unknownError
+        }
+    }
+}
+
+@Observable
+final class NetworkManager {
+    var userDataBinance = [UserDataBinance]()
+    var isLoading = false
+    var alert = false
+    var errorMessage = ""
+    private let serviceActor = ServiceActor()
+    
+    @MainActor func fetchUserDataBinance() async {
+        isLoading = true
+        defer {
+            isLoading = false
+        }
+        do {
+            userDataBinance = try await serviceActor.loadUserDataBinance()
+        } catch {
+            print("Catch error: \(error)")
+            if let networkError = error as? NetworkError {
+                self.errorMessage = warningMassage(error: networkError)
+            } else {
+                self.errorMessage = "Unknown error"
             }
-        }.resume()
+            self.alert = true
+        }
     }
 }
