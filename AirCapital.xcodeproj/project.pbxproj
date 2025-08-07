@@ -6,6 +6,24 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		226A7C7B2E4504CC007A9736 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 226A7C7A2E4504CC007A9736 /* Alamofire */; };
+		226A7C7D2E4504CC007A9736 /* AlamofireDynamic in Frameworks */ = {isa = PBXBuildFile; productRef = 226A7C7C2E4504CC007A9736 /* AlamofireDynamic */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		226A7C772E4504A1007A9736 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		22FE5F142E40F0A700EB40AD /* AirCapital.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AirCapital.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,16 +41,26 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				226A7C7B2E4504CC007A9736 /* Alamofire in Frameworks */,
+				226A7C7D2E4504CC007A9736 /* AlamofireDynamic in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		226A7C782E4504B1007A9736 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		22FE5F0B2E40F0A700EB40AD = {
 			isa = PBXGroup;
 			children = (
 				22FE5F162E40F0A700EB40AD /* AirCapital */,
+				226A7C782E4504B1007A9736 /* Frameworks */,
 				22FE5F152E40F0A700EB40AD /* Products */,
 			);
 			sourceTree = "<group>";
@@ -55,6 +83,7 @@
 				22FE5F102E40F0A700EB40AD /* Sources */,
 				22FE5F112E40F0A700EB40AD /* Frameworks */,
 				22FE5F122E40F0A700EB40AD /* Resources */,
+				226A7C772E4504A1007A9736 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -65,6 +94,8 @@
 			);
 			name = AirCapital;
 			packageProductDependencies = (
+				226A7C7A2E4504CC007A9736 /* Alamofire */,
+				226A7C7C2E4504CC007A9736 /* AlamofireDynamic */,
 			);
 			productName = AirCapital;
 			productReference = 22FE5F142E40F0A700EB40AD /* AirCapital.app */;
@@ -94,6 +125,9 @@
 			);
 			mainGroup = 22FE5F0B2E40F0A700EB40AD;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				226A7C792E4504CC007A9736 /* XCRemoteSwiftPackageReference "Alamofire" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 22FE5F152E40F0A700EB40AD /* Products */;
 			projectDirPath = "";
@@ -332,6 +366,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		226A7C792E4504CC007A9736 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.10.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		226A7C7A2E4504CC007A9736 /* Alamofire */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 226A7C792E4504CC007A9736 /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = Alamofire;
+		};
+		226A7C7C2E4504CC007A9736 /* AlamofireDynamic */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 226A7C792E4504CC007A9736 /* XCRemoteSwiftPackageReference "Alamofire" */;
+			productName = AlamofireDynamic;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 22FE5F0C2E40F0A700EB40AD /* Project object */;
 }

@@ -7,6 +7,7 @@
 
 import Foundation
 import Observation
+import Alamofire
 
 enum Link {
     case userDataBinance
@@ -29,83 +30,73 @@ enum NetworkError: Error {
     case malformedRequests
     case exchengeError
     case unknownError
-}
-
-private actor ServiceActor {
-    func loadUserDataBinance() async throws -> [UserDataBinance] {
-        let timestamp = Date().timeIntervalSince1970 * 1000
-        let recvWindow = 5000
-        let queryString = "timestamp=\(Int(timestamp))&recvWindow=\(recvWindow)"
-        let signature = hmacSHA256(query: queryString, secret: secretKey)
-        
-        let fullURLString = "\(Link.userDataBinance.url.absoluteString)?\(queryString)&signature=\(signature)"
-        
-        guard let url = URL(string: fullURLString) else {
-            throw NetworkError.unknownError
-        }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.addValue(apiKey, forHTTPHeaderField: "X-MBX-APIKEY")
-        
-        print("Fetching: \(url.absoluteString)")
-        
-        let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NetworkError.unknownError
-        }
-        
-        switch httpResponse.statusCode {
-        case 200...299:
-            do {
-                let decoded = try JSONDecoder().decode([UserDataBinance].self, from: data)
-                print("HTTP response status code: \(httpResponse.statusCode)")
-                return decoded
-            } catch {
-                print("Decoding error: \(error)")
-                print("Raw response: \(String(data: data, encoding: .utf8) ?? "nil")")
-                throw NetworkError.decodingError
-            }
-        case 429:
-            throw NetworkError.tooManyRequests
-        case 403:
-            throw NetworkError.limitWAF
-        case 409:
-            throw NetworkError.cancelReplace
-        case 418:
-            throw NetworkError.bannedIP
-        case 400...402, 404...408, 410...418, 420...499:
-            throw NetworkError.malformedRequests
-        default:
-            throw NetworkError.unknownError
-        }
-    }
+    case incorrectURL
 }
 
 @Observable
 final class NetworkManager {
-    var userDataBinance = [UserDataBinance]()
-    var isLoading = false
-    var alert = false
-    var errorMessage = ""
-    private let serviceActor = ServiceActor()
-    
-    @MainActor func fetchUserDataBinance() async {
-        isLoading = true
-        defer {
-            isLoading = false
+    static let shared = NetworkManager()
+    private init() {}
+
+    func fetchUserDataBinance(from url:URL, completion: @escaping (Result<[UserDataBinance], NetworkError>) -> Void) {
+        let timestamp = Date().timeIntervalSince1970 * 1000
+        let recvWindow = 5000
+        let queryString = "timestamp=\(Int(timestamp))&recvWindow=\(recvWindow)"
+        let signature = hmacSHA256(query: queryString, secret: secretKey)
+
+        let fullURLString = "\(Link.userDataBinance.url.absoluteString)?\(queryString)&signature=\(signature)"
+
+        guard let url = URL(string: fullURLString) else {
+            completion(.failure(.incorrectURL))
+            return
         }
-        do {
-            userDataBinance = try await serviceActor.loadUserDataBinance()
-        } catch {
-            print("Catch error: \(error)")
-            if let networkError = error as? NetworkError {
-                self.errorMessage = warningMassage(error: networkError)
-            } else {
-                self.errorMessage = "Unknown error"
+
+        let headers: HTTPHeaders = [
+            "X-MBX-APIKEY": apiKey
+        ]
+
+        print("Fetching: \(url.absoluteString)")
+
+        AF.request(url, method: .get, headers: headers)
+            .validate()
+            .responseData(queue: .main) { response in
+                switch response.result {
+                case .success(let data):
+                    let decoded = self.parseUserDataBinance(data)
+                    completion(.success(decoded))
+
+                case .failure:
+                    let statusCode = response.response?.statusCode ?? -1
+
+                    let networkError: NetworkError
+                    switch statusCode {
+                    case 429:
+                        networkError = .tooManyRequests
+                    case 403:
+                        networkError = .limitWAF
+                    case 409:
+                        networkError = .cancelReplace
+                    case 418:
+                        networkError = .bannedIP
+                    case 400...402, 404...408, 410...418, 420...499:
+                        networkError = .malformedRequests
+                    default:
+                        networkError = .unknownError
+                    }
+
+                    print("Alamofire error: \(response.error?.localizedDescription ?? "Unknown error")")
+                    completion(.failure(networkError))
+                }
             }
-            self.alert = true
+    }
+
+    private func parseUserDataBinance(_ data: Data) -> [UserDataBinance] {
+        var userDataBinance = [UserDataBinance]()
+        if let decoded: [UserDataBinance] = decode(data) {
+            userDataBinance = decoded
+        } else {
+            print("Failed to decode UserDataBinance from response.")
         }
+        return userDataBinance
     }
 }

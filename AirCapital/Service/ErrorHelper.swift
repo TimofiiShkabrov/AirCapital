@@ -30,5 +30,7 @@ func warningMassage(error: NetworkError) -> String {
         return "The issue occurred on Binance's side. It is important NOT to treat this as a transaction failure; the execution status is UNKNOWN and the transaction could have been successful."
     case .unknownError:
         return "Unknown error"
+    case .incorrectURL:
+        return "Incorrect API URL"
     }
 }
