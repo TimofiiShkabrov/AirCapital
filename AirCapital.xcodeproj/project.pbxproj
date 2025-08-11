@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		225E5CA82E4A056000853612 /* .gitignore in Resources */ = {isa = PBXBuildFile; fileRef = 225E5C9A2E4A056000853612 /* .gitignore */; };
 		22E674292E45EB66004B10E2 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 22E674282E45EB66004B10E2 /* Alamofire */; };
 /* End PBXBuildFile section */
 
@@ -24,6 +25,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		225E5C9A2E4A056000853612 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		22FE5F142E40F0A700EB40AD /* AirCapital.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AirCapital.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -58,6 +60,7 @@
 			isa = PBXGroup;
 			children = (
 				22FE5F162E40F0A700EB40AD /* AirCapital */,
+				225E5C9A2E4A056000853612 /* .gitignore */,
 				226A7C782E4504B1007A9736 /* Frameworks */,
 				22FE5F152E40F0A700EB40AD /* Products */,
 			);
@@ -140,6 +143,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				225E5CA82E4A056000853612 /* .gitignore in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
