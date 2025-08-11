@@ -7,8 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		226A7C7B2E4504CC007A9736 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 226A7C7A2E4504CC007A9736 /* Alamofire */; };
-		226A7C7D2E4504CC007A9736 /* AlamofireDynamic in Frameworks */ = {isa = PBXBuildFile; productRef = 226A7C7C2E4504CC007A9736 /* AlamofireDynamic */; };
+		22E674292E45EB66004B10E2 /* Alamofire in Frameworks */ = {isa = PBXBuildFile; productRef = 22E674282E45EB66004B10E2 /* Alamofire */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -41,8 +40,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				226A7C7B2E4504CC007A9736 /* Alamofire in Frameworks */,
-				226A7C7D2E4504CC007A9736 /* AlamofireDynamic in Frameworks */,
+				22E674292E45EB66004B10E2 /* Alamofire in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -94,8 +92,7 @@
 			);
 			name = AirCapital;
 			packageProductDependencies = (
-				226A7C7A2E4504CC007A9736 /* Alamofire */,
-				226A7C7C2E4504CC007A9736 /* AlamofireDynamic */,
+				22E674282E45EB66004B10E2 /* Alamofire */,
 			);
 			productName = AirCapital;
 			productReference = 22FE5F142E40F0A700EB40AD /* AirCapital.app */;
@@ -109,7 +106,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1640;
-				LastUpgradeCheck = 1640;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					22FE5F132E40F0A700EB40AD = {
 						CreatedOnToolsVersion = 16.4;
@@ -126,7 +123,7 @@
 			mainGroup = 22FE5F0B2E40F0A700EB40AD;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				226A7C792E4504CC007A9736 /* XCRemoteSwiftPackageReference "Alamofire" */,
+				22E674272E45EB66004B10E2 /* XCRemoteSwiftPackageReference "Alamofire" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 22FE5F152E40F0A700EB40AD /* Products */;
@@ -218,6 +215,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -275,6 +273,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -368,7 +367,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		226A7C792E4504CC007A9736 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
+		22E674272E45EB66004B10E2 /* XCRemoteSwiftPackageReference "Alamofire" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Alamofire/Alamofire.git";
 			requirement = {
@@ -379,15 +378,10 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		226A7C7A2E4504CC007A9736 /* Alamofire */ = {
+		22E674282E45EB66004B10E2 /* Alamofire */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 226A7C792E4504CC007A9736 /* XCRemoteSwiftPackageReference "Alamofire" */;
+			package = 22E674272E45EB66004B10E2 /* XCRemoteSwiftPackageReference "Alamofire" */;
 			productName = Alamofire;
-		};
-		226A7C7C2E4504CC007A9736 /* AlamofireDynamic */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 226A7C792E4504CC007A9736 /* XCRemoteSwiftPackageReference "Alamofire" */;
-			productName = AlamofireDynamic;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

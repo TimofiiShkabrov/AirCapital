@@ -8,45 +8,35 @@
 import SwiftUI
 
 struct ExchangeView: View {
-    
-    let networkManager = NetworkManager.shared
-    @State private var userDataBinance = [UserDataBinance]()
-    @State private var isLoading = false
-    @State private var alert = false
-    @State private var errorMessage = ""
+    @State private var exchangeViewModel = ExchengeViewModel()
     
     var body: some View {
-        ZStack {
-            List(userDataBinance, id: \.walletName) { item in
+        VStack {
+            if let bybit = exchangeViewModel.bybitWallets.first?.coin.first {
                 HStack {
-                    Text(item.walletName)
+                    Text("Binance total balance: ")
                     Spacer()
-                    Text(item.balance)
+                    Text("\(Double(bybit.walletBalance) ?? 0, specifier: "%.2f") USDT")
                 }
             }
-            
-            if isLoading {
-                ProgressView()
-                    .progressViewStyle(.circular)
+            HStack {
+                Text("Binance total balance: ")
+                Spacer()
+                Text("\((exchangeViewModel.binanceTotalBalance), specifier: "%.2f") USDT")
             }
         }
-        .alert("Ошибка", isPresented: $alert) {
-            Button("OK", role: .cancel) {}
+        .overlay {
+            if exchangeViewModel.isLoading {
+                ProgressView()
+            }
+        }
+        .alert("Ошибка", isPresented: $exchangeViewModel.alert) {
+            Button("OK", role: .cancel) { }
         } message: {
-            Text(errorMessage)
+            Text(exchangeViewModel.errorMessage)
         }
         .task {
-            isLoading = true
-            networkManager.fetchUserDataBinance(from: Link.userDataBinance.url) { result in
-                isLoading = false
-                switch result {
-                case .success(let data):
-                    userDataBinance = data
-                case .failure(let error):
-                    errorMessage = warningMassage(error: error)
-                    alert = true
-                }
-            }
+            exchangeViewModel.loadData()
         }
     }
 }

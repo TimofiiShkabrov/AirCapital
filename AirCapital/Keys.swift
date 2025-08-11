@@ -7,5 +7,11 @@
 
 import Foundation
 
-let apiKey = ""
-let secretKey = ""
+// MARK: - Binance API
+let apiKeyBinance = ""
+let secretKeyBinance = ""
+
+// MARK: - Bybit API
+
+let apiKeyBybit = ""
+let secretKeyBybit = ""

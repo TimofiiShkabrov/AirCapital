@@ -1,5 +1,5 @@
 //
-//  ExchangeViewModel.swift
+//  ExchengeViewModel.swift
 //  AirCapital
 //
 //  Created by Тимофей Шкабров on 09.08.2025.
@@ -11,11 +11,16 @@ import Observation
 @Observable
 final class ExchengeViewModel {
     var binanceWallets: [UserDataBinance] = []
-//    var binanceTotallBalance: Double = 0
     var bybitWallets: [UserDataBybit.Result.List] = []
     var isLoading = false
     var errorMessage = ""
     var alert = false
+    
+    var binanceTotalBalance: Double {
+        binanceWallets.reduce(0) { partialResult, wallet in
+            partialResult + (Double(wallet.balance) ?? 0)
+        }
+    }
     
     func loadData() {
         isLoading = true

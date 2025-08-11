@@ -11,11 +11,14 @@ import Alamofire
 
 enum Link {
     case userDataBinance
+    case userDataBybit
     
     var url: URL {
         switch self {
         case .userDataBinance:
             return URL(string: "https://api.binance.com/sapi/v1/asset/wallet/balance")!
+        case .userDataBybit:
+            return URL(string: "https://api.bybit.com/v5/account/wallet-balance")!
         }
     }
 }
@@ -37,66 +40,80 @@ enum NetworkError: Error {
 final class NetworkManager {
     static let shared = NetworkManager()
     private init() {}
-
-    func fetchUserDataBinance(from url:URL, completion: @escaping (Result<[UserDataBinance], NetworkError>) -> Void) {
-        let timestamp = Date().timeIntervalSince1970 * 1000
-        let recvWindow = 5000
-        let queryString = "timestamp=\(Int(timestamp))&recvWindow=\(recvWindow)"
-        let signature = hmacSHA256(query: queryString, secret: secretKey)
-
-        let fullURLString = "\(Link.userDataBinance.url.absoluteString)?\(queryString)&signature=\(signature)"
-
-        guard let url = URL(string: fullURLString) else {
-            completion(.failure(.incorrectURL))
-            return
-        }
-
-        let headers: HTTPHeaders = [
-            "X-MBX-APIKEY": apiKey
-        ]
-
-        print("Fetching: \(url.absoluteString)")
-
-        AF.request(url, method: .get, headers: headers)
+    
+    // MARK: - Universal request
+    private func request<T: Decodable>(
+        _ url: URL,
+        method: HTTPMethod = .get,
+        headers: HTTPHeaders? = nil,
+        completion: @escaping (Result<T, NetworkError>) -> Void
+    ) {
+        AF.request(url, method: method, headers: headers)
             .validate()
-            .responseData(queue: .main) { response in
+            .responseDecodable(of: T.self, decoder: JSONDecoder()) { response in
                 switch response.result {
-                case .success(let data):
-                    let decoded = self.parseUserDataBinance(data)
+                case .success(let decoded):
                     completion(.success(decoded))
-
                 case .failure:
-                    let statusCode = response.response?.statusCode ?? -1
-
-                    let networkError: NetworkError
-                    switch statusCode {
-                    case 429:
-                        networkError = .tooManyRequests
-                    case 403:
-                        networkError = .limitWAF
-                    case 409:
-                        networkError = .cancelReplace
-                    case 418:
-                        networkError = .bannedIP
-                    case 400...402, 404...408, 410...418, 420...499:
-                        networkError = .malformedRequests
-                    default:
-                        networkError = .unknownError
-                    }
-
-                    print("Alamofire error: \(response.error?.localizedDescription ?? "Unknown error")")
-                    completion(.failure(networkError))
+                    let code = response.response?.statusCode ?? -1
+                    completion(.failure(self.mapError(code)))
                 }
             }
     }
-
-    private func parseUserDataBinance(_ data: Data) -> [UserDataBinance] {
-        var userDataBinance = [UserDataBinance]()
-        if let decoded: [UserDataBinance] = decode(data) {
-            userDataBinance = decoded
-        } else {
-            print("Failed to decode UserDataBinance from response.")
+    
+    // MARK: - Binance API
+    func fetchUserDataBinance(completion: @escaping (Result<[UserDataBinance], NetworkError>) -> Void) {
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        let recvWindow = 5000
+        let queryString = "timestamp=\(timestamp)&recvWindow=\(recvWindow)"
+        let signature = hmacSHA256(query: queryString, secret: secretKeyBinance)
+        
+        let urlString = "\(Link.userDataBinance.url.absoluteString)?\(queryString)&signature=\(signature)"
+        guard let url = URL(string: urlString) else {
+            completion(.failure(.incorrectURL))
+            return
         }
-        return userDataBinance
+        
+        let headers: HTTPHeaders = ["X-MBX-APIKEY": apiKeyBinance]
+        request(url, headers: headers, completion: completion)
+    }
+    
+    // MARK: - Bybit API
+    func fetchUserDataBybit(completion: @escaping (Result<UserDataBybit, NetworkError>) -> Void) {
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        let recvWindow = 5000
+        let queryString = "accountType=UNIFIED"
+        
+        let preSign = "\(timestamp)\(apiKeyBybit)\(recvWindow)\(queryString)"
+        let signature = hmacSHA256(query: preSign, secret: secretKeyBybit)
+        
+        var urlComponents = URLComponents(url: Link.userDataBybit.url, resolvingAgainstBaseURL: false)!
+        urlComponents.query = queryString
+        
+        guard let url = urlComponents.url else {
+            completion(.failure(.incorrectURL))
+            return
+        }
+        
+        let headers: HTTPHeaders = [
+            "X-BAPI-SIGN": signature,
+            "X-BAPI-API-KEY": apiKeyBybit,
+            "X-BAPI-TIMESTAMP": "\(timestamp)",
+            "X-BAPI-RECV-WINDOW": "\(recvWindow)"
+        ]
+        
+        request(url, headers: headers, completion: completion)
+    }
+    
+    // MARK: - Error mapping
+    private func mapError(_ code: Int) -> NetworkError {
+        switch code {
+        case 429: return .tooManyRequests
+        case 403: return .limitWAF
+        case 409: return .cancelReplace
+        case 418: return .bannedIP
+        case 400...499: return .malformedRequests
+        default: return .unknownError
+        }
     }
 }
