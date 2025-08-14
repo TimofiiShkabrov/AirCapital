@@ -7,11 +7,18 @@
 
 import Foundation
 
-// MARK: - Binance API
+// MARK: - Binance APIKey
 let apiKeyBinance = ""
 let secretKeyBinance = ""
 
-// MARK: - Bybit API
-
+// MARK: - Bybit APIKey
 let apiKeyBybit = ""
 let secretKeyBybit = ""
+
+// MARK: - Bingx APIKey
+let apiKeyBingx = ""
+let secretKeyBingx = ""
+
+//MARK: - Gateio APIKey
+let apiKeyGateio = ""
+let secretKeyGateio = ""
