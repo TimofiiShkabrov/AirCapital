@@ -68,13 +68,13 @@ struct ExchangeView: View {
                     Image("Bingx")
                         .resizable()
                         .scaledToFit()
-                        .frame(height: 64)
+                        .frame(height: 40)
                         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Spacer()
-//                    Text("\((exchangeViewModel.bingxTotalBalance), specifier: "%.2f") USDT")
-//                        .font(.system(.subheadline, design: .monospaced, weight: .medium))
-//                        .foregroundStyle(.secondary)
+                    Text("\((exchangeViewModel.bingxTotalBalance), specifier: "%.2f") USDT")
+                        .font(.system(.subheadline, design: .monospaced, weight: .medium))
+                        .foregroundStyle(.secondary)
                 }
                 .padding()
                 .background(
@@ -112,29 +112,32 @@ struct ExchangeView: View {
                 )
                 .padding(.horizontal, 4)
                 
-                HStack {
-                    Image("Okx")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 64)
-                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Spacer()
-                    Text("\((exchangeViewModel.binanceTotalBalanceUSDT), specifier: "%.2f") USDT")
-                        .font(.system(.subheadline, design: .monospaced, weight: .medium))
-                        .foregroundStyle(.secondary)
+                if let okx = exchangeViewModel.okxWallets.first?.data.first,
+                   let totalBalance = Double(okx.totalEq) {
+                    HStack {
+                        Image("Okx")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(height: 64)
+                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Spacer()
+                        Text("\((totalBalance), specifier: "%.2f") USDT")
+                            .font(.system(.subheadline, design: .monospaced, weight: .medium))
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(.ultraThinMaterial)
+                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .strokeBorder(.primary.opacity(0.1), lineWidth: 1)
+                    )
+                    .padding(.horizontal, 4)
                 }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(.ultraThinMaterial)
-                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .strokeBorder(.primary.opacity(0.1), lineWidth: 1)
-                )
-                .padding(.horizontal, 4)
             }
         }
         .overlay {

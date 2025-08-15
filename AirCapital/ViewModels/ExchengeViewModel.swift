@@ -10,11 +10,13 @@ import Observation
 
 @Observable
 final class ExchengeViewModel {
-    var binancePrices: [PriceTickerBinance] = []
     var binanceWallets: [UserDataBinance] = []
     var bybitWallets: [UserDataBybit.Result.List] = []
-    var bingxWallets: [UserDataBingx] = []
+    var bingxSpotWallets: [UserDataBingxSpot] = []
+    var bingxFuturesWallets: [UserDataBingxFutures] = []
     var gateioWallets: [UserDataGateio] = []
+    var okxWallets: [UserDataOkx] = []
+    var binancePrices: [PriceTickerBinance] = []
     var isLoading = false
     var errorMessage = ""
     var alert = false
@@ -33,17 +35,39 @@ final class ExchengeViewModel {
         return binanceTotalBalance * btcPrice
     }
     
-//    var bingxTotalBalance: Double {
-//        bingxWallets.reduce(0) { partialResult, wallet in
-//            partialResult + (Double(wallet.balance) ?? 0)
-//        }
-//    }
-    
     var gateioTotalBalance: Double {
         gateioWallets.reduce(0) { partialResult, wallet in
             partialResult + (Double(wallet.total.amount) ?? 0)
         }
     }
+    
+    // MARK: - BingX Balances
+    var bingxTotalBalance: Double {
+        bingxSpotTotalBalance + bingxFuturesTotalBalance
+    }
+    
+    var bingxSpotTotalBalance: Double {
+        bingxSpotWallets.reduce(0) { partialResult, wallet in
+            guard wallet.code == 0, let balances = wallet.data?.balances else {
+                return partialResult
+            }
+            let usdtBalance = balances.first { $0.asset == "" }
+            let free = Double(usdtBalance?.free ?? "0") ?? 0
+            let locked = Double(usdtBalance?.locked ?? "0") ?? 0
+            return partialResult + free + locked
+        }
+    }
+    
+    var bingxFuturesTotalBalance: Double {
+        bingxFuturesWallets.reduce(0) { partialResult, wallet in
+            guard wallet.code == 0 else {
+                return partialResult
+            }
+            let usdtBalance = wallet.data.first { $0.asset == "" }
+            return partialResult + (Double(usdtBalance?.balance ?? "0") ?? 0)
+        }
+    }
+    
     
     func loadData() {
         isLoading = true
@@ -85,23 +109,47 @@ final class ExchengeViewModel {
             group.leave()
         }
         
-//        group.enter()
-//        NetworkManager.shared.fetchBingxSpotBalances { [weak self] result in
-//            switch result {
-//            case .success(let data):
-//                self?.bingxWallets = [data]
-//            case .failure(let error):
-//                self?.errorMessage = "\(error)"
-//                self?.alert = true
-//            }
-//            group.leave()
-//        }
+        group.enter()
+        NetworkManager.shared.fetchUserDataBingxSpot { [weak self] result in
+            switch result {
+            case .success(let data):
+                self?.bingxSpotWallets = [data]
+            case .failure(let error):
+                self?.errorMessage = "\(error)"
+                self?.alert = true
+            }
+            group.leave()
+        }
         
         group.enter()
-        NetworkManager.shared.fetchGateioBalances { [weak self] result in
+        NetworkManager.shared.fetchUserDataBingxFutures { [weak self] result in
+            switch result {
+            case .success(let data):
+                self?.bingxFuturesWallets = [data]
+            case .failure(let error):
+                self?.errorMessage = "\(error)"
+                self?.alert = true
+            }
+            group.leave()
+        }
+        
+        group.enter()
+        NetworkManager.shared.fetchUserDataGateio { [weak self] result in
             switch result {
             case .success(let data):
                 self?.gateioWallets = [data]
+            case .failure(let error):
+                self?.errorMessage = "\(error)"
+                self?.alert = true
+            }
+            group.leave()
+        }
+        
+        group.enter()
+        NetworkManager.shared.fetchUserDataOkx { [weak self] result in
+            switch result {
+            case .success(let data):
+                self?.okxWallets = [data]
             case .failure(let error):
                 self?.errorMessage = "\(error)"
                 self?.alert = true

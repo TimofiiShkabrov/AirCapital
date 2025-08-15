@@ -14,6 +14,7 @@ enum Link {
     case userDataBybit
     case userDataBingx
     case userDataGateio
+    case userDataOkx
     case priceTickerBinance
     
     var url: URL {
@@ -25,7 +26,9 @@ enum Link {
         case .userDataBingx:
             return URL(string: "https://open-api.bingx.com")!
         case .userDataGateio:
-            return URL (string: "https://api.gateio.ws")!
+            return URL(string: "https://api.gateio.ws")!
+        case .userDataOkx:
+            return URL(string: "https://www.okx.com")!
         case .priceTickerBinance:
             return URL(string: "https://api.binance.com/api/v3/ticker/price")!
         }
@@ -71,7 +74,7 @@ final class NetworkManager {
                 case .failure(let error):
                     print("Error: \(error)")
                     let code = response.response?.statusCode ?? -1
-                    completion(.failure(self.mapError(code)))
+                    completion(.failure(mapError(code)))
                 }
             }
     }
@@ -85,7 +88,6 @@ final class NetworkManager {
             completion(.failure(.incorrectURL))
             return
         }
-        
         request(url, completion: completion)
     }
     
@@ -100,7 +102,6 @@ final class NetworkManager {
             completion(.failure(.incorrectURL))
             return
         }
-        
         let headers: HTTPHeaders = ["X-MBX-APIKEY": apiKeyBinance]
         request(url, headers: headers, completion: completion)
     }
@@ -128,31 +129,46 @@ final class NetworkManager {
             "X-BAPI-TIMESTAMP": "\(timestamp)",
             "X-BAPI-RECV-WINDOW": "\(recvWindow)"
         ]
-        
         request(url, headers: headers, completion: completion)
     }
     
     // MARK: - Bingx API
-    //    func fetchBingxSpotBalances(completion: @escaping (Result<UserDataBingx, NetworkError>) -> Void) {
-    //        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
-    //        let recvWindow = 5000
-    //
-    //        let path = "/openApi/spot/v1/account"
-    //        let queryString = "timestamp=\(timestamp)&recvWindow=\(recvWindow)"
-    //        let signature = hmacSHA256(query: queryString, secret: secretKeyBingx)
-    //
-    //        let urlString = "\(Link.userDataBingx.url.absoluteString)\(path)?\(queryString)&signature=\(signature)"
-    //        guard let url = URL(string: urlString) else {
-    //            completion(.failure(.incorrectURL))
-    //            return
-    //        }
-    //
-    //        let headers: HTTPHeaders = ["X-BX-APIKEY": apiKeyBingx]
-    //        request(url, method: .get, headers: headers, completion: completion)
-    //    }
+    func fetchUserDataBingxSpot(completion: @escaping (Result<UserDataBingxSpot, NetworkError>) -> Void) {
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        let recvWindow = 5000
+        let path = "/openApi/spot/v1/account/balance"
+        let queryString = "timestamp=\(timestamp)&recvWindow=\(recvWindow)"
+        
+        let signature = hmacSHA256(query: queryString, secret: secretKeyBingx)
+        let urlString = "\(Link.userDataBingx.url.absoluteString)\(path)?\(queryString)&signature=\(signature)"
+        
+        guard let url = URL(string: urlString) else {
+            completion(.failure(.incorrectURL))
+            return
+        }
+        let headers: HTTPHeaders = ["X-BX-APIKEY": apiKeyBingx]
+        request(url, method: .get, headers: headers, completion: completion)
+    }
+    
+    func fetchUserDataBingxFutures(completion: @escaping (Result<UserDataBingxFutures, NetworkError>) -> Void) {
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        let recvWindow = 5000
+        let path = "/openApi/swap/v3/user/balance"
+        let query = "timestamp=\(timestamp)&recvWindow=\(recvWindow)"
+        
+        let signature = hmacSHA256(query: query, secret: secretKeyBingx)
+        let urlStr = "\(Link.userDataBingx.url.absoluteString)\(path)?\(query)&signature=\(signature)"
+        
+        guard let url = URL(string: urlStr) else {
+            completion(.failure(.incorrectURL))
+            return
+        }
+        let headers: HTTPHeaders = ["X-BX-APIKEY": apiKeyBingx]
+        request(url, method: .get, headers: headers, completion: completion)
+    }
     
     // MARK: - Gateio API
-    func fetchGateioBalances(completion: @escaping (Result<UserDataGateio, NetworkError>) -> Void) {
+    func fetchUserDataGateio(completion: @escaping (Result<UserDataGateio, NetworkError>) -> Void) {
         let timestamp = String(Int(Date().timeIntervalSince1970))
         let method = "GET"
         let path = "/api/v4/wallet/total_balance"
@@ -163,7 +179,7 @@ final class NetworkManager {
         let signString = "\(method)\n\(path)\n\(queryString)\n\(bodyHash)\n\(timestamp)"
         let signature = hmacSHA512(query: signString, secret: secretKeyGateio)
         
-        guard let url = URL(string: "https://api.gateio.ws\(path)?\(queryString)") else {
+        guard let url = URL(string: "\(Link.userDataGateio.url.absoluteString)\(path)?\(queryString)") else {
             completion(.failure(.incorrectURL))
             return
         }
@@ -178,18 +194,33 @@ final class NetworkManager {
         request(url, method: .get, headers: headers, completion: completion)
     }
     
-    // MARK: - Error mapping
-    private func mapError(_ code: Int) -> NetworkError {
-        switch code {
-        case 401: return .malformedRequests
-        case 429: return .tooManyRequests
-        case 403: return .limitWAF
-        case 409: return .cancelReplace
-        case 418: return .bannedIP
-        case 400...428: return .malformedRequests
-        case 430...499: return .malformedRequests
-        case 500...599: return .exchengeError
-        default: return .unknownError
+    // MARK: - OKX API
+    func fetchUserDataOkx(completion: @escaping (Result<UserDataOkx, NetworkError>) -> Void) {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let timestamp = formatter.string(from: Date())
+        
+        let method = "GET"
+        let requestPath = "/api/v5/account/balance"
+        let query = ""
+        let body = ""
+        
+        let signString = "\(timestamp)\(method)\(requestPath)\(body)"
+        let signature = hmacSHA256Base64(input: signString, secret: secretKeyOkx)
+        
+        guard let url = URL(string: "https://www.okx.com\(requestPath)\(query)") else {
+            completion(.failure(.incorrectURL))
+            return
         }
+        
+        let headers: HTTPHeaders = [
+            "Content-Type": "application/json",
+            "OK-ACCESS-KEY": apiKeyOkx,
+            "OK-ACCESS-SIGN": signature,
+            "OK-ACCESS-PASSPHRASE": passphraseKeyOkx,
+            "OK-ACCESS-TIMESTAMP": timestamp,
+            "x-simulated-trading": "0"
+        ]
+        request(url, method: .get, headers: headers, completion: completion)
     }
 }

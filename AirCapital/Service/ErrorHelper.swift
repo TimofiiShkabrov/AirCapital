@@ -7,6 +7,21 @@
 
 import Foundation
 
+// MARK: - Error mapping
+func mapError(_ code: Int) -> NetworkError {
+    switch code {
+    case 401: return .malformedRequests
+    case 429: return .tooManyRequests
+    case 403: return .limitWAF
+    case 409: return .cancelReplace
+    case 418: return .bannedIP
+    case 400...428: return .malformedRequests
+    case 430...499: return .malformedRequests
+    case 500...599: return .exchengeError
+    default: return .unknownError
+    }
+}
+
 func warningMassage(error: NetworkError) -> String {
     switch error {
     case .tooManyRequests:
