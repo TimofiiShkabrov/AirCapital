@@ -9,126 +9,74 @@ import SwiftUI
 
 struct HomeView: View {
     
+    @State private var homeViewModel = HomeViewModel()
+    @State private var settingsViewModel = SettingsViewModel()
+    @State private var showSettings = false
+    
     var body: some View {
-        //        List {
-        VStack {
-            HStack {
-                Image("Bybit")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 64)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+        NavigationStack {
+            VStack(spacing: 20) {
+                
+                // If there are no added exchanges
+                if settingsViewModel.savedExchanges.isEmpty {
+                    VStack(spacing: 12) {
+                        Text("Welcome to AirCapital 🚀")
+                            .font(.title3.bold())
+                        Text("Add the first exchange in the settings")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        
+                        Button {
+                            showSettings.toggle()
+                        } label: {
+                            Label("Go to settings", systemImage: "gear")
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.blue)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                } else {
+                    
+                    // MARK: - Total Balance
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Total Balance")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                        
+                        Text("\(homeViewModel.totalBalanceUSDT, specifier: "%.2f") USDT")
+                            .font(.system(size: 28, weight: .semibold, design: .rounded))
+                            .foregroundStyle(.primary)
+                    }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer()
-                Text("100 000 USDT")
-                    .font(.system(.subheadline, design: .monospaced, weight: .medium))
-                    .foregroundStyle(.secondary)
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 20)
+                            .fill(.ultraThinMaterial)
+                            .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
+                    )
+                    .padding(.horizontal)
+                    
+                    // MARK: - Exchanges
+                    ExchangeView()
+                        .frame(maxHeight: .infinity)
+                }
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(.primary.opacity(0.1), lineWidth: 1)
-            )
-            
-            HStack {
-                Image("Binance")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 64)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer()
-                Text("100 000 USDT")
-                    .font(.system(.subheadline, design: .monospaced, weight: .medium))
-                    .foregroundStyle(.secondary)
+            .navigationTitle("Dashboard")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showSettings.toggle()
+                    } label: {
+                        Image(systemName: "gear")
+                            .foregroundStyle(.primary)
+                    }
+                }
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(.primary.opacity(0.1), lineWidth: 1)
-            )
-            
-            HStack {
-                Image("Bingx")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 32)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer()
-                Text("100 000 USDT")
-                    .font(.system(.subheadline, design: .monospaced, weight: .medium))
-                    .foregroundStyle(.secondary)
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
             }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(.primary.opacity(0.1), lineWidth: 1)
-            )
-            
-            HStack {
-                Image("Gateio")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 70)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer()
-                Text("100 000 USDT")
-                    .font(.system(.subheadline, design: .monospaced, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(.primary.opacity(0.1), lineWidth: 1)
-            )
-            
-            HStack {
-                Image("Okx")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(height: 64)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                Spacer()
-                Text("100 000 USDT")
-                    .font(.system(.subheadline, design: .monospaced, weight: .medium))
-                    .foregroundStyle(.secondary)
-            }
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .strokeBorder(.primary.opacity(0.1), lineWidth: 1)
-            )
         }
-        .frame(maxWidth: .infinity)
-        .ignoresSafeArea(.container, edges: .horizontal)
     }
 }
 

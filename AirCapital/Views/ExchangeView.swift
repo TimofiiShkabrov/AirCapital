@@ -15,7 +15,7 @@ struct ExchangeView: View {
         List {
             VStack {
                 HStack {
-                    Image("Binance")
+                    Image("binance")
                         .resizable()
                         .scaledToFit()
                         .frame(height: 64)
@@ -40,7 +40,7 @@ struct ExchangeView: View {
                 
                 if let bybit = exchangeViewModel.bybitWallets.first?.coin.first {
                     HStack {
-                        Image("Bybit")
+                        Image("bybit")
                             .resizable()
                             .scaledToFit()
                             .frame(height: 64)
@@ -65,10 +65,10 @@ struct ExchangeView: View {
                 }
                 
                 HStack {
-                    Image("Bingx")
+                    Image("bingx")
                         .resizable()
                         .scaledToFit()
-                        .frame(height: 40)
+                        .frame(height: 64)
                         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Spacer()
@@ -89,7 +89,7 @@ struct ExchangeView: View {
                 .padding(.horizontal, 4)
                 
                 HStack {
-                    Image("Gateio")
+                    Image("gateio")
                         .resizable()
                         .scaledToFit()
                         .frame(height: 64)
@@ -115,7 +115,7 @@ struct ExchangeView: View {
                 if let okx = exchangeViewModel.okxWallets.first?.data.first,
                    let totalBalance = Double(okx.totalEq) {
                     HStack {
-                        Image("Okx")
+                        Image("okx")
                             .resizable()
                             .scaledToFit()
                             .frame(height: 64)

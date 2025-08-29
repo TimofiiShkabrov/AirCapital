@@ -34,4 +34,10 @@ final class APIKeysManager {
         let passphrase = KeychainHelper.load("\(exchange.rawValue)_passphrase")
         return APIKeys(apiKey: apiKey, secretKey: secretKey, passphrase: passphrase)
     }
+    
+    static func delete(for exchange: Exchange) {
+            KeychainHelper.delete("\(exchange.rawValue)_apiKey")
+            KeychainHelper.delete("\(exchange.rawValue)_secretKey")
+            KeychainHelper.delete("\(exchange.rawValue)_passphrase")
+        }
 }

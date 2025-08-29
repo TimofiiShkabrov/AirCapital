@@ -8,33 +8,34 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @State private var viewModel = SettingsViewModel()
+    
+    @State private var settingsViewModel = SettingsViewModel()
     
     var body: some View {
         NavigationView {
             Form {
                 Section("Exchange") {
-                    Picker("Choose", selection: $viewModel.selectedExchange) {
+                    Picker("Choose", selection: $settingsViewModel.selectedExchange) {
                         ForEach(Exchange.allCases, id: \.self) { exchange in
                             Text(exchange.rawValue.capitalized).tag(exchange)
                         }
                     }
-                    .onChange(of: viewModel.selectedExchange) { _ in
-                        viewModel.loadKeys()
+                    .onChange(of: settingsViewModel.selectedExchange) {
+                        settingsViewModel.loadKeys()
                     }
                 }
                 
                 Section("API Keys") {
-                    TextField("API Key", text: $viewModel.apiKey)
+                    TextField("API Key", text: $settingsViewModel.apiKey)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     
-                    SecureField("Secret Key", text: $viewModel.secretKey)
+                    SecureField("Secret Key", text: $settingsViewModel.secretKey)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                     
-                    if viewModel.selectedExchange == .okx {
-                        SecureField("Passphrase", text: $viewModel.passphrase)
+                    if settingsViewModel.selectedExchange == .okx {
+                        SecureField("Passphrase", text: $settingsViewModel.passphrase)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                     }
@@ -42,15 +43,38 @@ struct SettingsView: View {
                 
                 Section {
                     Button("Save") {
-                        viewModel.saveKeys()
+                        settingsViewModel.saveKeys()
+                    }
+                }
+                Section("Saved Exchanges") {
+                    ForEach(settingsViewModel.savedExchanges, id: \.self) { exchange in
+                        HStack {
+                            Text(exchange.rawValue.capitalized)
+                                .fontWeight(.medium)
+                            
+                            Spacer()
+                            
+                            if let apiKey = APIKeysManager.load(for: exchange)?.apiKey,
+                               !apiKey.isEmpty {
+                                Text("\(apiKey.prefix(4))••••")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                    .onDelete { indexSet in
+                        for index in indexSet {
+                            let exchange = settingsViewModel.savedExchanges[index]
+                            APIKeysManager.delete(for: exchange)
+                        }
                     }
                 }
             }
             .navigationTitle("Settings API")
             .onAppear {
-                viewModel.loadKeys()
+                settingsViewModel.loadKeys()
             }
-            .alert("Saved", isPresented: $viewModel.showSavedAlert) {
+            .alert("Saved", isPresented: $settingsViewModel.showSavedAlert) {
                 Button("OK", role: .cancel) { }
             }
         }

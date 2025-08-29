@@ -16,6 +16,10 @@ final class SettingsViewModel {
     var passphrase: String = ""
     var showSavedAlert = false
     
+    var savedExchanges: [Exchange] {
+            Exchange.allCases.filter { APIKeysManager.load(for: $0) != nil }
+        }
+    
     func loadKeys() {
         if let keys = APIKeysManager.load(for: selectedExchange) {
             apiKey = keys.apiKey
