@@ -9,16 +9,22 @@ import SwiftUI
 
 struct HomeView: View {
     
-    @State private var homeViewModel = HomeViewModel()
-    @State private var settingsViewModel = SettingsViewModel()
+    @State private var exchangeViewModel: ExchengeViewModel
+    @State private var homeViewModel: HomeViewModel
     @State private var showSettings = false
+
+    init() {
+        let exchangeVM = ExchengeViewModel()
+        _exchangeViewModel = State(initialValue: exchangeVM)
+        _homeViewModel = State(initialValue: HomeViewModel(exchangeViewModel: exchangeVM))
+    }
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 20) {
                 
                 // If there are no added exchanges
-                if settingsViewModel.savedExchanges.isEmpty {
+                if homeViewModel.hasConnectedExchanges == false {
                     VStack(spacing: 12) {
                         Text("Welcome to AirCapital 🚀")
                             .font(.title3.bold())
@@ -58,11 +64,10 @@ struct HomeView: View {
                     .padding(.horizontal)
                     
                     // MARK: - Exchanges
-                    ExchangeView()
+                    ExchangeView(exchangeViewModel: exchangeViewModel)
                         .frame(maxHeight: .infinity)
                 }
             }
-            .navigationTitle("Dashboard")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -75,6 +80,11 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .onChange(of: showSettings) { _, isPresented in
+                if isPresented == false {
+                    exchangeViewModel.loadData()
+                }
             }
         }
     }

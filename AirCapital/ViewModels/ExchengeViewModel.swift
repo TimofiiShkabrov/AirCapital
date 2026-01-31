@@ -20,6 +20,16 @@ final class ExchengeViewModel {
     var isLoading = false
     var errorMessage = ""
     var alert = false
+
+    var enabledExchanges: [Exchange] {
+        Exchange.allCases.filter { APIKeysManager.load(for: $0) != nil }
+    }
+
+    var totalBalanceUSDT: Double {
+        enabledExchanges.reduce(0) { partialResult, exchange in
+            partialResult + balanceUSDT(for: exchange)
+        }
+    }
     
     var binanceTotalBalance: Double {
         binanceWallets.reduce(0) { partialResult, wallet in
@@ -33,6 +43,12 @@ final class ExchengeViewModel {
             return 0
         }
         return binanceTotalBalance * btcPrice
+    }
+
+    var bybitTotalBalanceUSDT: Double {
+        bybitWallets.reduce(0) { partialResult, wallet in
+            partialResult + (Double(wallet.totalEquity) ?? 0)
+        }
     }
     
     var gateioTotalBalance: Double {
@@ -51,7 +67,7 @@ final class ExchengeViewModel {
             guard wallet.code == 0, let balances = wallet.data?.balances else {
                 return partialResult
             }
-            let usdtBalance = balances.first { $0.asset == "" }
+            let usdtBalance = balances.first { $0.asset.uppercased() == "USDT" }
             let free = Double(usdtBalance?.free ?? "0") ?? 0
             let locked = Double(usdtBalance?.locked ?? "0") ?? 0
             return partialResult + free + locked
@@ -63,102 +79,190 @@ final class ExchengeViewModel {
             guard wallet.code == 0 else {
                 return partialResult
             }
-            let usdtBalance = wallet.data.first { $0.asset == "" }
+            let usdtBalance = wallet.data.first { $0.asset.uppercased() == "USDT" }
             return partialResult + (Double(usdtBalance?.balance ?? "0") ?? 0)
         }
     }
-    
-    
-    func loadData() {
+
+    var okxTotalBalanceUSDT: Double {
+        guard let okx = okxWallets.first?.data.first,
+              let totalBalance = Double(okx.totalEq) else {
+            return 0
+        }
+        return totalBalance
+    }
+
+    func balanceUSDT(for exchange: Exchange) -> Double {
+        switch exchange {
+        case .binance:
+            return binanceTotalBalanceUSDT
+        case .bybit:
+            return bybitTotalBalanceUSDT
+        case .bingx:
+            return bingxTotalBalance
+        case .gateio:
+            return gateioTotalBalance
+        case .okx:
+            return okxTotalBalanceUSDT
+        }
+    }
+
+    func loadData(completion: (() -> Void)? = nil) {
+        errorMessage = ""
+        alert = false
+
+        let enabled = enabledExchanges
+        if enabled.isEmpty {
+            binanceWallets = []
+            bybitWallets = []
+            bingxSpotWallets = []
+            bingxFuturesWallets = []
+            gateioWallets = []
+            okxWallets = []
+            binancePrices = []
+            isLoading = false
+            completion?()
+            return
+        }
+
         isLoading = true
         let group = DispatchGroup()
-        
-        group.enter()
-        NetworkManager.shared.fetchPriceTickerBinance { [weak self] result in
-            switch result {
-            case .success(let data):
-                self?.binancePrices = [data]
-            case .failure(let error):
-                self?.errorMessage = "\(error)"
-                self?.alert = true
+
+        if enabled.contains(.binance) {
+            group.enter()
+            NetworkManager.shared.fetchPriceTickerBinance { [weak self] result in
+                switch result {
+                case .success(let data):
+                    self?.binancePrices = [data]
+                case .failure(let error):
+                    self?.handleFailure(error, exchange: .binance, invalidatesKeys: false)
+                }
+                group.leave()
             }
-            group.leave()
+
+            group.enter()
+            NetworkManager.shared.fetchUserDataBinance { [weak self] result in
+                switch result {
+                case .success(let data):
+                    self?.binanceWallets = data
+                case .failure(let error):
+                    self?.handleFailure(error, exchange: .binance)
+                }
+                group.leave()
+            }
+        } else {
+            binanceWallets = []
+            binancePrices = []
         }
-        
-        group.enter()
-        NetworkManager.shared.fetchUserDataBinance { [weak self] result in
-            switch result {
-            case .success(let data):
-                self?.binanceWallets = data
-            case .failure(let error):
-                self?.errorMessage = "\(error)"
-                self?.alert = true
+
+        if enabled.contains(.bybit) {
+            group.enter()
+            NetworkManager.shared.fetchUserDataBybit { [weak self] result in
+                switch result {
+                case .success(let data):
+                    self?.bybitWallets = data.result.list
+                case .failure(let error):
+                    self?.handleFailure(error, exchange: .bybit)
+                }
+                group.leave()
             }
-            group.leave()
+        } else {
+            bybitWallets = []
         }
-        
-        group.enter()
-        NetworkManager.shared.fetchUserDataBybit { [weak self] result in
-            switch result {
-            case .success(let data):
-                self?.bybitWallets = data.result.list
-            case .failure(let error):
-                self?.errorMessage = "\(error)"
-                self?.alert = true
+
+        if enabled.contains(.bingx) {
+            group.enter()
+            NetworkManager.shared.fetchUserDataBingxSpot { [weak self] result in
+                switch result {
+                case .success(let data):
+                    self?.bingxSpotWallets = [data]
+                case .failure(let error):
+                    self?.handleFailure(error, exchange: .bingx)
+                }
+                group.leave()
             }
-            group.leave()
+
+            group.enter()
+            NetworkManager.shared.fetchUserDataBingxFutures { [weak self] result in
+                switch result {
+                case .success(let data):
+                    self?.bingxFuturesWallets = [data]
+                case .failure(let error):
+                    self?.handleFailure(error, exchange: .bingx)
+                }
+                group.leave()
+            }
+        } else {
+            bingxSpotWallets = []
+            bingxFuturesWallets = []
         }
-        
-        group.enter()
-        NetworkManager.shared.fetchUserDataBingxSpot { [weak self] result in
-            switch result {
-            case .success(let data):
-                self?.bingxSpotWallets = [data]
-            case .failure(let error):
-                self?.errorMessage = "\(error)"
-                self?.alert = true
+
+        if enabled.contains(.gateio) {
+            group.enter()
+            NetworkManager.shared.fetchUserDataGateio { [weak self] result in
+                switch result {
+                case .success(let data):
+                    self?.gateioWallets = [data]
+                case .failure(let error):
+                    self?.handleFailure(error, exchange: .gateio)
+                }
+                group.leave()
             }
-            group.leave()
+        } else {
+            gateioWallets = []
         }
-        
-        group.enter()
-        NetworkManager.shared.fetchUserDataBingxFutures { [weak self] result in
-            switch result {
-            case .success(let data):
-                self?.bingxFuturesWallets = [data]
-            case .failure(let error):
-                self?.errorMessage = "\(error)"
-                self?.alert = true
+
+        if enabled.contains(.okx) {
+            group.enter()
+            NetworkManager.shared.fetchUserDataOkx { [weak self] result in
+                switch result {
+                case .success(let data):
+                    self?.okxWallets = [data]
+                case .failure(let error):
+                    self?.handleFailure(error, exchange: .okx)
+                }
+                group.leave()
             }
-            group.leave()
-        }
-        
-        group.enter()
-        NetworkManager.shared.fetchUserDataGateio { [weak self] result in
-            switch result {
-            case .success(let data):
-                self?.gateioWallets = [data]
-            case .failure(let error):
-                self?.errorMessage = "\(error)"
-                self?.alert = true
-            }
-            group.leave()
-        }
-        
-        group.enter()
-        NetworkManager.shared.fetchUserDataOkx { [weak self] result in
-            switch result {
-            case .success(let data):
-                self?.okxWallets = [data]
-            case .failure(let error):
-                self?.errorMessage = "\(error)"
-                self?.alert = true
-            }
-            group.leave()
+        } else {
+            okxWallets = []
         }
         
         group.notify(queue: .main) { [weak self] in
             self?.isLoading = false
+            completion?()
+        }
+    }
+
+    private func handleFailure(
+        _ error: NetworkError,
+        exchange: Exchange,
+        invalidatesKeys: Bool = true
+    ) {
+        if invalidatesKeys && error == .malformedRequests {
+            APIKeysManager.delete(for: exchange)
+            clearData(for: exchange)
+            NotificationCenter.default.post(name: .apiKeysInvalidated, object: exchange)
+            errorMessage = "Неверные API ключи для \(exchange.rawValue.capitalized)"
+        } else {
+            errorMessage = warningMassage(error: error)
+        }
+        alert = true
+    }
+
+    private func clearData(for exchange: Exchange) {
+        switch exchange {
+        case .binance:
+            binanceWallets = []
+            binancePrices = []
+        case .bybit:
+            bybitWallets = []
+        case .bingx:
+            bingxSpotWallets = []
+            bingxFuturesWallets = []
+        case .gateio:
+            gateioWallets = []
+        case .okx:
+            okxWallets = []
         }
     }
 }

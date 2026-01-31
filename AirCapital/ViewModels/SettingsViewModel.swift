@@ -15,10 +15,35 @@ final class SettingsViewModel {
     var secretKey: String = ""
     var passphrase: String = ""
     var showSavedAlert = false
+    private var invalidationObserver: NSObjectProtocol?
     
     var savedExchanges: [Exchange] {
             Exchange.allCases.filter { APIKeysManager.load(for: $0) != nil }
         }
+
+    init() {
+        invalidationObserver = NotificationCenter.default.addObserver(
+            forName: .apiKeysInvalidated,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let exchange = notification.object as? Exchange else {
+                return
+            }
+            guard exchange == self?.selectedExchange else {
+                return
+            }
+            self?.apiKey = ""
+            self?.secretKey = ""
+            self?.passphrase = ""
+        }
+    }
+
+    deinit {
+        if let observer = invalidationObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
     
     func loadKeys() {
         if let keys = APIKeysManager.load(for: selectedExchange) {
@@ -36,6 +61,9 @@ final class SettingsViewModel {
         let keys = APIKeys(apiKey: apiKey, secretKey: secretKey,
                            passphrase: passphrase.isEmpty ? nil : passphrase)
         APIKeysManager.save(keys, for: selectedExchange)
+        apiKey = ""
+        secretKey = ""
+        passphrase = ""
         showSavedAlert = true
     }
 }

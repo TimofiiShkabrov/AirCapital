@@ -41,3 +41,7 @@ final class APIKeysManager {
             KeychainHelper.delete("\(exchange.rawValue)_passphrase")
         }
 }
+
+extension Notification.Name {
+    static let apiKeysInvalidated = Notification.Name("apiKeysInvalidated")
+}
