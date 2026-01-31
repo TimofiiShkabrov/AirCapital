@@ -51,3 +51,34 @@ struct UserDataBybit: Codable {
     struct RetEXTInfo: Codable {
     }
 }
+
+// MARK: - Bybit Earn Positions
+struct BybitEarnPositionResponse: Codable {
+    let retCode: Int
+    let retMsg: String
+    let result: Result?
+    let retExtInfo: RetExtInfo?
+    let time: Int?
+
+    struct Result: Codable {
+        let list: [Position]
+    }
+
+    struct Position: Codable {
+        let coin: String
+        let productId: String?
+        let amount: String
+        let totalPnl: String?
+        let claimableYield: String?
+        let id: String?
+        let status: String?
+        let orderId: String?
+        let estimateRedeemTime: String?
+        let estimateStakeTime: String?
+        let estimateInterestCalculationTime: String?
+        let settlementTime: String?
+    }
+
+    struct RetExtInfo: Codable {
+    }
+}

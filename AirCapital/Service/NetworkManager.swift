@@ -12,6 +12,7 @@ import Alamofire
 enum Link {
     case userDataBinance
     case userDataBybit
+    case userDataBybitEarn
     case userDataBingx
     case userDataGateio
     case userDataOkx
@@ -23,6 +24,8 @@ enum Link {
             return URL(string: "https://api.binance.com/sapi/v1/asset/wallet/balance")!
         case .userDataBybit:
             return URL(string: "https://api.bybit.com/v5/account/wallet-balance")!
+        case .userDataBybitEarn:
+            return URL(string: "https://api.bybit.com/v5/earn/position")!
         case .userDataBingx:
             return URL(string: "https://open-api.bingx.com")!
         case .userDataGateio:
@@ -93,7 +96,7 @@ final class NetworkManager {
         
         let timestamp = Int(Date().timeIntervalSince1970 * 1000)
         let recvWindow = 5000
-        let queryString = "timestamp=\(timestamp)&recvWindow=\(recvWindow)"
+        let queryString = "quoteAsset=USDT&timestamp=\(timestamp)&recvWindow=\(recvWindow)"
         let signature = hmacSHA256(query: queryString, secret: keys.secretKey)
         
         let urlString = "\(Link.userDataBinance.url.absoluteString)?\(queryString)&signature=\(signature)"
@@ -128,6 +131,39 @@ final class NetworkManager {
             return
         }
         
+        let headers: HTTPHeaders = [
+            "X-BAPI-SIGN": signature,
+            "X-BAPI-API-KEY": keys.apiKey,
+            "X-BAPI-TIMESTAMP": "\(timestamp)",
+            "X-BAPI-RECV-WINDOW": "\(recvWindow)"
+        ]
+        request(url, headers: headers, completion: completion)
+    }
+
+    func fetchBybitEarnPositions(
+        category: String,
+        completion: @escaping (Result<BybitEarnPositionResponse, NetworkError>) -> Void
+    ) {
+        guard let keys = APIKeysManager.load(for: .bybit) else {
+            completion(.failure(.exchengeError))
+            return
+        }
+
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        let recvWindow = 5000
+        let queryString = "category=\(category)"
+
+        let signPayload = "\(timestamp)\(keys.apiKey)\(recvWindow)\(queryString)"
+        let signature = hmacSHA256(query: signPayload, secret: keys.secretKey)
+
+        var urlComponents = URLComponents(url: Link.userDataBybitEarn.url, resolvingAgainstBaseURL: false)!
+        urlComponents.query = queryString
+
+        guard let url = urlComponents.url else {
+            completion(.failure(.incorrectURL))
+            return
+        }
+
         let headers: HTTPHeaders = [
             "X-BAPI-SIGN": signature,
             "X-BAPI-API-KEY": keys.apiKey,
@@ -195,7 +231,7 @@ final class NetworkManager {
         let timestamp = String(Int(Date().timeIntervalSince1970))
         let method = "GET"
         let path = "/api/v4/wallet/total_balance"
-        let queryString = ""
+        let queryString = "currency=USDT"
         let body = ""
         let bodyHash = sha512Hex(input: body)
         
@@ -253,4 +289,3 @@ final class NetworkManager {
         request(url, method: .get, headers: headers, completion: completion)
     }
 }
-

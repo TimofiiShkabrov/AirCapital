@@ -22,15 +22,23 @@ struct ExchangeDetailSection: Identifiable, Hashable {
     let rows: [ExchangeDetailRow]
 }
 
+struct BybitEarnPositionItem: Identifiable, Hashable {
+    let id = UUID()
+    let category: String
+    let coin: String
+    let amount: String
+    let status: String?
+}
+
 @Observable
 final class ExchengeViewModel {
     var binanceWallets: [UserDataBinance] = []
     var bybitWallets: [UserDataBybit.Result.List] = []
+    var bybitEarnPositions: [BybitEarnPositionItem] = []
     var bingxSpotWallets: [UserDataBingxSpot] = []
     var bingxFuturesWallets: [UserDataBingxFutures] = []
     var gateioWallets: [UserDataGateio] = []
     var okxWallets: [UserDataOkx] = []
-    var binancePrices: [PriceTickerBinance] = []
     var isLoading = false
     var errorMessage = ""
     var alert = false
@@ -45,24 +53,17 @@ final class ExchengeViewModel {
         }
     }
     
-    var binanceTotalBalance: Double {
+    var binanceTotalBalanceUSDT: Double {
         binanceWallets.reduce(0) { partialResult, wallet in
             partialResult + (Double(wallet.balance) ?? 0)
         }
     }
-    
-    var binanceTotalBalanceUSDT: Double {
-        guard let btcPriceString = binancePrices.first(where: { $0.symbol == "BTCUSDT" })?.price,
-              let btcPrice = Double(btcPriceString) else {
-            return 0
-        }
-        return binanceTotalBalance * btcPrice
-    }
 
     var bybitTotalBalanceUSDT: Double {
-        bybitWallets.reduce(0) { partialResult, wallet in
+        let walletTotal = bybitWallets.reduce(0) { partialResult, wallet in
             partialResult + (Double(wallet.totalEquity) ?? 0)
         }
+        return walletTotal + bybitEarnTotalUSDT
     }
     
     var gateioTotalBalance: Double {
@@ -121,6 +122,53 @@ final class ExchengeViewModel {
         }
     }
 
+    private var bybitCoinPriceMap: [String: Double] {
+        var map: [String: Double] = [:]
+        for wallet in bybitWallets {
+            for coin in wallet.coin {
+                guard let usdValue = Double(coin.usdValue),
+                      let equity = Double(coin.equity),
+                      equity > 0 else {
+                    continue
+                }
+                map[coin.coin.uppercased()] = usdValue / equity
+            }
+        }
+        return map
+    }
+
+    private var bybitEarnTotalUSDT: Double {
+        bybitEarnPositions.reduce(0) { partialResult, position in
+            guard let amount = Double(position.amount),
+                  let usdtValue = bybitEarnUSDTValue(coin: position.coin, amount: amount) else {
+                return partialResult
+            }
+            return partialResult + usdtValue
+        }
+    }
+
+    private func bybitEarnUSDTValue(coin: String, amount: Double) -> Double? {
+        let upperCoin = coin.uppercased()
+        if upperCoin == "USDT" || upperCoin == "USDC" {
+            return amount
+        }
+        guard let price = bybitCoinPriceMap[upperCoin] else {
+            return nil
+        }
+        return amount * price
+    }
+
+    private func bybitEarnCategoryLabel(_ category: String) -> String {
+        switch category {
+        case "FlexibleSaving":
+            return "Flexible Saving"
+        case "OnChain":
+            return "On-chain"
+        default:
+            return category
+        }
+    }
+
     func detailSections(for exchange: Exchange) -> [ExchangeDetailSection] {
         var sections: [ExchangeDetailSection]
         switch exchange {
@@ -151,7 +199,6 @@ final class ExchengeViewModel {
             bingxFuturesWallets = []
             gateioWallets = []
             okxWallets = []
-            binancePrices = []
             isLoading = false
             completion?()
             return
@@ -161,17 +208,6 @@ final class ExchengeViewModel {
         let group = DispatchGroup()
 
         if enabled.contains(.binance) {
-            group.enter()
-            NetworkManager.shared.fetchPriceTickerBinance { [weak self] result in
-                switch result {
-                case .success(let data):
-                    self?.binancePrices = [data]
-                case .failure(let error):
-                    self?.handleFailure(error, exchange: .binance, invalidatesKeys: false)
-                }
-                group.leave()
-            }
-
             group.enter()
             NetworkManager.shared.fetchUserDataBinance { [weak self] result in
                 switch result {
@@ -184,10 +220,10 @@ final class ExchengeViewModel {
             }
         } else {
             binanceWallets = []
-            binancePrices = []
         }
 
         if enabled.contains(.bybit) {
+            bybitEarnPositions = []
             group.enter()
             NetworkManager.shared.fetchUserDataBybit { [weak self] result in
                 switch result {
@@ -198,8 +234,35 @@ final class ExchengeViewModel {
                 }
                 group.leave()
             }
+
+            let earnCategories = ["FlexibleSaving", "OnChain"]
+            for category in earnCategories {
+                group.enter()
+                NetworkManager.shared.fetchBybitEarnPositions(category: category) { [weak self] result in
+                    switch result {
+                    case .success(let data):
+                        guard data.retCode == 0, let positions = data.result?.list else {
+                            group.leave()
+                            return
+                        }
+                        let items = positions.map {
+                            BybitEarnPositionItem(
+                                category: category,
+                                coin: $0.coin,
+                                amount: $0.amount,
+                                status: $0.status
+                            )
+                        }
+                        self?.bybitEarnPositions.append(contentsOf: items)
+                    case .failure:
+                        break
+                    }
+                    group.leave()
+                }
+            }
         } else {
             bybitWallets = []
+            bybitEarnPositions = []
         }
 
         if enabled.contains(.bingx) {
@@ -285,7 +348,6 @@ final class ExchengeViewModel {
         switch exchange {
         case .binance:
             binanceWallets = []
-            binancePrices = []
         case .bybit:
             bybitWallets = []
         case .bingx:
@@ -300,16 +362,13 @@ final class ExchengeViewModel {
 
     // MARK: - Detail sections
     private func binanceDetailSections() -> [ExchangeDetailSection] {
-        let btcPrice = Double(binancePrices.first(where: { $0.symbol == "BTCUSDT" })?.price ?? "")
         let rows = binanceWallets.map { wallet in
-            let balanceBTC = Double(wallet.balance)
-            let usdtValue = (balanceBTC ?? 0) * (btcPrice ?? 0)
-            let valueText = btcPrice == nil ? "BTCUSDT price unavailable" : nil
+            let usdtValue = Double(wallet.balance)
             return ExchangeDetailRow(
                 title: wallet.walletName.isEmpty ? "Wallet" : wallet.walletName,
                 subtitle: wallet.activate ? "Active" : "Inactive",
-                usdtValue: (btcPrice == nil || balanceBTC == nil) ? nil : usdtValue,
-                valueText: valueText
+                usdtValue: usdtValue,
+                valueText: usdtValue == nil ? "—" : nil
             )
         }
         return [sectionOrPlaceholder(title: "Wallets", rows: rows)]
@@ -342,6 +401,22 @@ final class ExchengeViewModel {
             }
             let title = "Account \(account.accountType)"
             sections.append(sectionOrPlaceholder(title: title, rows: rows))
+        }
+        if bybitEarnPositions.isEmpty == false {
+            let earnRows = bybitEarnPositions.map { position in
+                let amount = Double(position.amount) ?? 0
+                let usdtValue = bybitEarnUSDTValue(coin: position.coin, amount: amount)
+                let subtitle = "Earn \(bybitEarnCategoryLabel(position.category))"
+                return ExchangeDetailRow(
+                    title: position.coin,
+                    subtitle: subtitle,
+                    usdtValue: usdtValue,
+                    valueText: usdtValue == nil ? "Price unavailable" : nil
+                )
+            }
+            sections.append(sectionOrPlaceholder(title: "Earn", rows: earnRows))
+        } else {
+            sections.append(placeholderSection(title: "Earn", message: "No data"))
         }
         return sections.isEmpty ? [placeholderSection(title: "Wallets", message: "No data")] : sections
     }
