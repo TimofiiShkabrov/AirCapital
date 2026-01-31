@@ -2,7 +2,7 @@
 //  UserDataBinance.swift
 //  AirCapital
 //
-//  Created by Тимофей Шкабров on 04.08.2025.
+//  Created by Timofey Shkabrov on 04.08.2025.
 //
 
 import Foundation

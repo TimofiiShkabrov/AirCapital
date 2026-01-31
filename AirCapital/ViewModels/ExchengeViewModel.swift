@@ -2,11 +2,25 @@
 //  ExchengeViewModel.swift
 //  AirCapital
 //
-//  Created by Тимофей Шкабров on 09.08.2025.
+//  Created by Timofey Shkabrov on 09.08.2025.
 //
 
 import Foundation
 import Observation
+
+struct ExchangeDetailRow: Identifiable, Hashable {
+    let id = UUID()
+    let title: String
+    let subtitle: String?
+    let usdtValue: Double?
+    let valueText: String?
+}
+
+struct ExchangeDetailSection: Identifiable, Hashable {
+    let id = UUID()
+    let title: String
+    let rows: [ExchangeDetailRow]
+}
 
 @Observable
 final class ExchengeViewModel {
@@ -105,6 +119,24 @@ final class ExchengeViewModel {
         case .okx:
             return okxTotalBalanceUSDT
         }
+    }
+
+    func detailSections(for exchange: Exchange) -> [ExchangeDetailSection] {
+        var sections: [ExchangeDetailSection]
+        switch exchange {
+        case .binance:
+            sections = binanceDetailSections()
+        case .bybit:
+            sections = bybitDetailSections()
+        case .bingx:
+            sections = bingxDetailSections()
+        case .gateio:
+            sections = gateioDetailSections()
+        case .okx:
+            sections = okxDetailSections()
+        }
+        sections.append(subaccountsSection())
+        return sections
     }
 
     func loadData(completion: (() -> Void)? = nil) {
@@ -242,7 +274,7 @@ final class ExchengeViewModel {
             APIKeysManager.delete(for: exchange)
             clearData(for: exchange)
             NotificationCenter.default.post(name: .apiKeysInvalidated, object: exchange)
-            errorMessage = "Неверные API ключи для \(exchange.rawValue.capitalized)"
+            errorMessage = "Invalid API keys for \(exchange.rawValue.capitalized)"
         } else {
             errorMessage = warningMassage(error: error)
         }
@@ -264,5 +296,141 @@ final class ExchengeViewModel {
         case .okx:
             okxWallets = []
         }
+    }
+
+    // MARK: - Detail sections
+    private func binanceDetailSections() -> [ExchangeDetailSection] {
+        let btcPrice = Double(binancePrices.first(where: { $0.symbol == "BTCUSDT" })?.price ?? "")
+        let rows = binanceWallets.map { wallet in
+            let balanceBTC = Double(wallet.balance)
+            let usdtValue = (balanceBTC ?? 0) * (btcPrice ?? 0)
+            let valueText = btcPrice == nil ? "BTCUSDT price unavailable" : nil
+            return ExchangeDetailRow(
+                title: wallet.walletName.isEmpty ? "Wallet" : wallet.walletName,
+                subtitle: wallet.activate ? "Active" : "Inactive",
+                usdtValue: (btcPrice == nil || balanceBTC == nil) ? nil : usdtValue,
+                valueText: valueText
+            )
+        }
+        return [sectionOrPlaceholder(title: "Wallets", rows: rows)]
+    }
+
+    private func bybitDetailSections() -> [ExchangeDetailSection] {
+        var sections: [ExchangeDetailSection] = []
+        for account in bybitWallets {
+            var rows: [ExchangeDetailRow] = []
+            if let total = Double(account.totalEquity) {
+                rows.append(
+                    ExchangeDetailRow(
+                        title: "Total",
+                        subtitle: nil,
+                        usdtValue: total,
+                        valueText: nil
+                    )
+                )
+            }
+            for coin in account.coin {
+                let usdValue = Double(coin.usdValue)
+                rows.append(
+                    ExchangeDetailRow(
+                        title: coin.coin,
+                        subtitle: "Equity \(coin.equity)",
+                        usdtValue: usdValue,
+                        valueText: usdValue == nil ? "—" : nil
+                    )
+                )
+            }
+            let title = "Account \(account.accountType)"
+            sections.append(sectionOrPlaceholder(title: title, rows: rows))
+        }
+        return sections.isEmpty ? [placeholderSection(title: "Wallets", message: "No data")] : sections
+    }
+
+    private func bingxDetailSections() -> [ExchangeDetailSection] {
+        let spotRows = bingxSpotWallets.flatMap { wallet -> [ExchangeDetailRow] in
+            guard wallet.code == 0, let balances = wallet.data?.balances else {
+                return []
+            }
+            return balances.compactMap { balance in
+                guard balance.asset.uppercased() == "USDT" else {
+                    return nil
+                }
+                let total = (Double(balance.free) ?? 0) + (Double(balance.locked) ?? 0)
+                return ExchangeDetailRow(
+                    title: balance.asset,
+                    subtitle: "Spot",
+                    usdtValue: total,
+                    valueText: nil
+                )
+            }
+        }
+        let futuresRows = bingxFuturesWallets.flatMap { wallet -> [ExchangeDetailRow] in
+            guard wallet.code == 0 else {
+                return []
+            }
+            return wallet.data.map { data in
+                let usdtValue = Double(data.equity) ?? Double(data.balance)
+                return ExchangeDetailRow(
+                    title: data.asset,
+                    subtitle: "Futures",
+                    usdtValue: usdtValue,
+                    valueText: usdtValue == nil ? "—" : nil
+                )
+            }
+        }
+        return [
+            sectionOrPlaceholder(title: "Spot", rows: spotRows, emptyMessage: "No USDT"),
+            sectionOrPlaceholder(title: "Futures", rows: futuresRows)
+        ]
+    }
+
+    private func gateioDetailSections() -> [ExchangeDetailSection] {
+        let rows = gateioWallets.flatMap { wallet -> [ExchangeDetailRow] in
+            wallet.details.values.compactMap { detail in
+                guard detail.currency.uppercased() == "USDT" else {
+                    return nil
+                }
+                let usdtValue = Double(detail.amount)
+                return ExchangeDetailRow(
+                    title: detail.currency.uppercased(),
+                    subtitle: nil,
+                    usdtValue: usdtValue,
+                    valueText: usdtValue == nil ? "—" : nil
+                )
+            }
+        }
+        return [sectionOrPlaceholder(title: "Wallets", rows: rows, emptyMessage: "No USDT")]
+    }
+
+    private func okxDetailSections() -> [ExchangeDetailSection] {
+        let rows: [ExchangeDetailRow] = okxWallets.first?.data.first?.details.map { detail in
+            let usdtValue = Double(detail.eqUsd)
+            return ExchangeDetailRow(
+                title: detail.ccy,
+                subtitle: "Equity",
+                usdtValue: usdtValue,
+                valueText: usdtValue == nil ? "—" : nil
+            )
+        } ?? []
+        return [sectionOrPlaceholder(title: "Assets", rows: rows)]
+    }
+
+    private func subaccountsSection() -> ExchangeDetailSection {
+        placeholderSection(title: "Subaccounts", message: "No data")
+    }
+
+    private func sectionOrPlaceholder(
+        title: String,
+        rows: [ExchangeDetailRow],
+        emptyMessage: String = "No data"
+    ) -> ExchangeDetailSection {
+        rows.isEmpty ? placeholderSection(title: title, message: emptyMessage) : ExchangeDetailSection(title: title, rows: rows)
+    }
+
+    private func placeholderSection(title: String, message: String) -> ExchangeDetailSection {
+        ExchangeDetailSection(
+            title: title,
+            rows: [ExchangeDetailRow(title: message, subtitle: nil, usdtValue: nil, valueText: nil)]
+        )
     }
 }

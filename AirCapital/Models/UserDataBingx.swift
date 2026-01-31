@@ -2,7 +2,7 @@
 //  UserDataBingx.swift
 //  AirCapital
 //
-//  Created by Тимофей Шкабров on 12.08.2025.
+//  Created by Timofey Shkabrov on 12.08.2025.
 //
 
 import Foundation

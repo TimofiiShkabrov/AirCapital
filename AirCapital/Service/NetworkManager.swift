@@ -2,7 +2,7 @@
 //  NetworkManager.swift
 //  AirCapital
 //
-//  Created by Тимофей Шкабров on 04.08.2025.
+//  Created by Timofey Shkabrov on 04.08.2025.
 //
 
 import Foundation
@@ -62,17 +62,10 @@ final class NetworkManager {
         AF.request(url, method: method, headers: headers)
             .validate()
             .responseDecodable(of: T.self, decoder: JSONDecoder()) { response in
-                if let statusCode = response.response?.statusCode {
-                    print("HTTP Status Code: \(statusCode)")
-                }
-                if let data = response.data, let rawResponse = String(data: data, encoding: .utf8) {
-                    print("Response Data: \(rawResponse)")
-                }
                 switch response.result {
                 case .success(let decoded):
                     completion(.success(decoded))
-                case .failure(let error):
-                    print("Error: \(error)")
+                case .failure(_):
                     let code = response.response?.statusCode ?? -1
                     completion(.failure(mapError(code)))
                 }
@@ -260,3 +253,4 @@ final class NetworkManager {
         request(url, method: .get, headers: headers, completion: completion)
     }
 }
+

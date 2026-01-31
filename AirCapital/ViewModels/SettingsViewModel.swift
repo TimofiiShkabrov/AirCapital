@@ -2,7 +2,7 @@
 //  SettingsViewModel.swift
 //  AirCapital
 //
-//  Created by Тимофей Шкабров on 26.08.2025.
+//  Created by Timofey Shkabrov on 26.08.2025.
 //
 
 import Foundation
@@ -46,15 +46,9 @@ final class SettingsViewModel {
     }
     
     func loadKeys() {
-        if let keys = APIKeysManager.load(for: selectedExchange) {
-            apiKey = keys.apiKey
-            secretKey = keys.secretKey
-            passphrase = keys.passphrase ?? ""
-        } else {
-            apiKey = ""
-            secretKey = ""
-            passphrase = ""
-        }
+        apiKey = ""
+        secretKey = ""
+        passphrase = ""
     }
     
     func saveKeys() {
