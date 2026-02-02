@@ -13,9 +13,11 @@ enum Link {
     case userDataBinance
     case userDataBybit
     case userDataBybitEarn
+    case userDataBybitAllCoins
     case userDataBingx
     case userDataGateio
     case userDataOkx
+    case userDataOkxFunding
     case priceTickerBinance
     
     var url: URL {
@@ -26,11 +28,15 @@ enum Link {
             return URL(string: "https://api.bybit.com/v5/account/wallet-balance")!
         case .userDataBybitEarn:
             return URL(string: "https://api.bybit.com/v5/earn/position")!
+        case .userDataBybitAllCoins:
+            return URL(string: "https://api.bybit.com/v5/asset/transfer/query-account-coins-balance")!
         case .userDataBingx:
             return URL(string: "https://open-api.bingx.com")!
         case .userDataGateio:
             return URL(string: "https://api.gateio.ws")!
         case .userDataOkx:
+            return URL(string: "https://www.okx.com")!
+        case .userDataOkxFunding:
             return URL(string: "https://www.okx.com")!
         case .priceTickerBinance:
             return URL(string: "https://api.binance.com/api/v3/ticker/price")!
@@ -163,6 +169,35 @@ final class NetworkManager: @unchecked Sendable {
         ]
         request(url, headers: headers, completion: completion)
     }
+
+    func fetchBybitAllCoinsBalance(
+        accountType: String,
+        keys: APIKeys,
+        completion: @escaping (Result<BybitAllCoinsBalanceResponse, NetworkError>) -> Void
+    ) {
+        let timestamp = Int(Date().timeIntervalSince1970 * 1000)
+        let recvWindow = 5000
+        let queryString = "accountType=\(accountType)"
+
+        let signPayload = "\(timestamp)\(keys.apiKey)\(recvWindow)\(queryString)"
+        let signature = hmacSHA256(query: signPayload, secret: keys.secretKey)
+
+        var urlComponents = URLComponents(url: Link.userDataBybitAllCoins.url, resolvingAgainstBaseURL: false)!
+        urlComponents.query = queryString
+
+        guard let url = urlComponents.url else {
+            completion(.failure(.incorrectURL))
+            return
+        }
+
+        let headers: HTTPHeaders = [
+            "X-BAPI-SIGN": signature,
+            "X-BAPI-API-KEY": keys.apiKey,
+            "X-BAPI-TIMESTAMP": "\(timestamp)",
+            "X-BAPI-RECV-WINDOW": "\(recvWindow)"
+        ]
+        request(url, headers: headers, completion: completion)
+    }
     
     // MARK: - Bingx API
     func fetchUserDataBingxSpot(
@@ -257,6 +292,38 @@ final class NetworkManager: @unchecked Sendable {
             return
         }
         
+        let headers: HTTPHeaders = [
+            "Content-Type": "application/json",
+            "OK-ACCESS-KEY": keys.apiKey,
+            "OK-ACCESS-SIGN": signature,
+            "OK-ACCESS-PASSPHRASE": (keys.passphrase ?? ""),
+            "OK-ACCESS-TIMESTAMP": timestamp,
+            "x-simulated-trading": "0"
+        ]
+        request(url, method: .get, headers: headers, completion: completion)
+    }
+
+    func fetchFundingBalancesOkx(
+        keys: APIKeys,
+        completion: @escaping (Result<OkxFundingBalanceResponse, NetworkError>) -> Void
+    ) {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let timestamp = formatter.string(from: Date())
+
+        let method = "GET"
+        let requestPath = "/api/v5/asset/balances"
+        let query = ""
+        let body = ""
+
+        let signString = "\(timestamp)\(method)\(requestPath)\(body)"
+        let signature = hmacSHA256Base64(input: signString, secret: keys.secretKey)
+
+        guard let url = URL(string: "https://www.okx.com\(requestPath)\(query)") else {
+            completion(.failure(.incorrectURL))
+            return
+        }
+
         let headers: HTTPHeaders = [
             "Content-Type": "application/json",
             "OK-ACCESS-KEY": keys.apiKey,

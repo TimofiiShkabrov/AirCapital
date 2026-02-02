@@ -21,6 +21,6 @@ final class HomeViewModel {
     }
 
     var hasConnectedExchanges: Bool {
-        !exchangeViewModel.enabledExchanges.isEmpty
+        !exchangeViewModel.enabledAccounts.isEmpty
     }
 }

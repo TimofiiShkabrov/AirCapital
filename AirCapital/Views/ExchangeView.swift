@@ -10,20 +10,20 @@ import SwiftUI
 struct ExchangeView: View {
     @Bindable var exchangeViewModel: ExchengeViewModel
     @Binding var showSettings: Bool
-    @State private var selectedExchange: Exchange?
+    @State private var selectedAccount: ExchangeAccount?
 
     var body: some View {
-        let exchanges = exchangeViewModel.enabledExchanges
+        let accounts = exchangeViewModel.enabledAccounts
 
         NavigationSplitView {
-            List(selection: $selectedExchange) {
+            List(selection: $selectedAccount) {
                 Section("Total Balance") {
                     LabeledContent {
                         Text("\(exchangeViewModel.totalBalanceUSDT, specifier: "%.2f") USDT")
                             .font(.title3.weight(.semibold))
                             .monospacedDigit()
                     } label: {
-                        Text("All Exchanges")
+                        Text("All Accounts")
                     }
                     .listRowBackground(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -31,10 +31,10 @@ struct ExchangeView: View {
                     )
                 }
 
-                Section("Exchanges") {
-                    ForEach(exchanges, id: \.self) { exchange in
-                        NavigationLink(value: exchange) {
-                            exchangeRow(for: exchange)
+                Section("Accounts") {
+                    ForEach(accounts) { account in
+                        NavigationLink(value: account) {
+                            accountRow(for: account)
                         }
                     }
                 }
@@ -58,11 +58,11 @@ struct ExchangeView: View {
                     }
                 }
             }
+            .navigationDestination(for: ExchangeAccount.self) { account in
+                ExchangeDetailsView(account: account, exchangeViewModel: exchangeViewModel)
+            }
         } detail: {
-            detailsPane(for: exchanges)
-        }
-        .navigationDestination(for: Exchange.self) { exchange in
-            ExchangeDetailsView(exchange: exchange, exchangeViewModel: exchangeViewModel)
+            detailsPane(for: accounts)
         }
         .overlay {
             if exchangeViewModel.isLoading {
@@ -77,22 +77,30 @@ struct ExchangeView: View {
         .task {
             exchangeViewModel.loadData()
         }
-        .onChange(of: exchanges) { _, newValue in
-            if let selected = selectedExchange, newValue.contains(selected) == false {
-                selectedExchange = nil
+        .onChange(of: accounts) { _, newValue in
+            if let selected = selectedAccount, newValue.contains(selected) == false {
+                selectedAccount = nil
             }
         }
     }
 
-    private func exchangeRow(for exchange: Exchange) -> some View {
-        let balance = exchangeViewModel.balanceUSDT(for: exchange)
+    private func accountRow(for account: ExchangeAccount) -> some View {
+        let balance = exchangeViewModel.balanceUSDT(for: account)
         return HStack(spacing: 12) {
-            Image(exchange.rawValue)
+            Image(account.exchange.rawValue)
                 .resizable()
                 .scaledToFit()
                 .frame(width: 32, height: 32)
-            Text(exchange.rawValue.capitalized)
-                .font(.body.weight(.medium))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(account.exchange.rawValue.capitalized)
+                    .font(.body.weight(.medium))
+                let label = accountLabel(for: account)
+                if label.isEmpty == false {
+                    Text(label)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
             Spacer()
             Text("\(balance, specifier: "%.2f") USDT")
                 .font(.subheadline)
@@ -102,20 +110,20 @@ struct ExchangeView: View {
     }
 
     @ViewBuilder
-    private func detailsPane(for exchanges: [Exchange]) -> some View {
-        if exchanges.isEmpty {
+    private func detailsPane(for accounts: [ExchangeAccount]) -> some View {
+        if accounts.isEmpty {
             ContentUnavailableView(
                 "No Exchanges",
                 systemImage: "creditcard",
                 description: Text("Add an exchange in Settings.")
             )
-        } else if let exchange = selectedExchange {
-            ExchangeDetailsView(exchange: exchange, exchangeViewModel: exchangeViewModel)
+        } else if let account = selectedAccount {
+            ExchangeDetailsView(account: account, exchangeViewModel: exchangeViewModel)
         } else {
             ContentUnavailableView(
                 "No Exchange Selected",
                 systemImage: "bitcoinsign.circle",
-                description: Text("Choose an exchange from the list.")
+                description: Text("Choose an account from the list.")
             )
         }
     }
@@ -124,4 +132,13 @@ struct ExchangeView: View {
 
 #Preview {
     ExchangeView(exchangeViewModel: ExchengeViewModel(), showSettings: .constant(false))
+}
+
+private func accountLabel(for account: ExchangeAccount) -> String {
+    if let label = account.label, label.isEmpty == false {
+        return label
+    }
+    let accounts = APIKeysManager.accounts(for: account.exchange)
+    let index = accounts.firstIndex(of: account).map { $0 + 1 } ?? 1
+    return "Account \(index)"
 }

@@ -8,56 +8,54 @@
 import SwiftUI
 
 struct ExchangeDetailsView: View {
-    let exchange: Exchange
+    let account: ExchangeAccount
     @Bindable var exchangeViewModel: ExchengeViewModel
+    @State private var path: [WalletTypeSection] = []
 
     var body: some View {
-        List {
-            Section("Overview") {
-                HStack(spacing: 12) {
-                    Image(exchange.rawValue)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 36, height: 36)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(exchange.rawValue.capitalized)
-                            .font(.headline)
-                        Text("Total Balance")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+        NavigationStack(path: $path) {
+            List {
+                Section {
+                    overviewCard
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .padding(.horizontal, 16)
+                } header: {
+                    sectionHeader("Overview")
+                }
+
+                Section {
+                    let sections = exchangeViewModel.walletTypeSections(for: account)
+                    ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
+                        Button {
+                            path.append(section)
+                        } label: {
+                            WalletTypeRowView(
+                                section: section,
+                                isFirst: index == 0,
+                                isLast: index == sections.count - 1
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .padding(.horizontal, 16)
                     }
-                    Spacer()
-                    Text("\(exchangeViewModel.balanceUSDT(for: exchange), specifier: "%.2f") USDT")
-                        .font(.headline)
-                        .monospacedDigit()
+                } header: {
+                    sectionHeader("Wallets")
                 }
             }
-
-            ForEach(exchangeViewModel.detailSections(for: exchange)) { section in
-                Section(section.title) {
-                    ForEach(section.rows) { row in
-                        LabeledContent {
-                            Text(valueText(for: row))
-                                .monospacedDigit()
-                                .foregroundStyle(.secondary)
-                        } label: {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(row.title)
-                                    .font(.subheadline.weight(.medium))
-                                if let subtitle = row.subtitle, subtitle.isEmpty == false {
-                                    Text(subtitle)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                    }
-                }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color(.systemBackground))
+            .navigationTitle(account.exchange.rawValue.capitalized)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(for: WalletTypeSection.self) { section in
+                WalletTypeDetailView(section: section, valueText: valueText(for:))
             }
         }
-        .listStyle(.insetGrouped)
-        .navigationTitle(exchange.rawValue.capitalized)
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func valueText(for row: ExchangeDetailRow) -> String {
@@ -69,8 +67,59 @@ struct ExchangeDetailsView: View {
         }
         return "—"
     }
+
+    private var overviewCard: some View {
+        HStack(spacing: 12) {
+            Image(account.exchange.rawValue)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 36, height: 36)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(account.exchange.rawValue.capitalized)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                Text(accountLabel(for: account))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text("\(exchangeViewModel.balanceUSDT(for: account), specifier: "%.2f") USDT")
+                .font(.headline)
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color(.separator).opacity(0.35), lineWidth: 1)
+        )
+    }
+
+
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.headline)
+            .foregroundStyle(.secondary)
+            .padding(.leading, 16)
+            .padding(.top, 8)
+    }
 }
 
 #Preview {
-    ExchangeDetailsView(exchange: .binance, exchangeViewModel: ExchengeViewModel())
+    let account = ExchangeAccount(id: UUID(), exchange: .binance, label: nil, createdAt: Date())
+    ExchangeDetailsView(account: account, exchangeViewModel: ExchengeViewModel())
+}
+
+private func accountLabel(for account: ExchangeAccount) -> String {
+    if let label = account.label, label.isEmpty == false {
+        return label
+    }
+    let accounts = APIKeysManager.accounts(for: account.exchange)
+    let index = accounts.firstIndex(of: account).map { $0 + 1 } ?? 1
+    return "Account \(index)"
 }
