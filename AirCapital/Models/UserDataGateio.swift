@@ -8,13 +8,13 @@
 import Foundation
 
 // MARK: - UserDataGateio
-struct UserDataGateio: Codable {
+struct UserDataGateio: Codable, Sendable {
     let details: [String: Account]
     let total: Total
 }
 
 // MARK: - Account
-struct Account: Codable {
+struct Account: Codable, Sendable {
     let currency: String
     let amount: String
     let unrealisedPnl: String?
@@ -27,7 +27,7 @@ struct Account: Codable {
 }
 
 // MARK: - Total
-struct Total: Codable {
+struct Total: Codable, Sendable {
     let amount, currency, borrowed: String
     let unrealisedPnl: String?
 

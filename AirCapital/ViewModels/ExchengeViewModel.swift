@@ -44,7 +44,10 @@ final class ExchengeViewModel {
     var alert = false
 
     var enabledExchanges: [Exchange] {
-        Exchange.allCases.filter { APIKeysManager.load(for: $0) != nil }
+        let accounts = APIKeysManager.allAccounts()
+        return Exchange.allCases.filter { exchange in
+            accounts.contains { $0.exchange == exchange }
+        }
     }
 
     var totalBalanceUSDT: Double {
@@ -100,11 +103,12 @@ final class ExchengeViewModel {
     }
 
     var okxTotalBalanceUSDT: Double {
-        guard let okx = okxWallets.first?.data.first,
-              let totalBalance = Double(okx.totalEq) else {
-            return 0
+        okxWallets.reduce(0) { partialResult, wallet in
+            let total = wallet.data.reduce(0.0) { innerResult, data in
+                innerResult + (Double(data.totalEq) ?? 0)
+            }
+            return partialResult + total
         }
-        return totalBalance
     }
 
     func balanceUSDT(for exchange: Exchange) -> Double {
@@ -191,10 +195,11 @@ final class ExchengeViewModel {
         errorMessage = ""
         alert = false
 
-        let enabled = enabledExchanges
-        if enabled.isEmpty {
+        let accounts = APIKeysManager.allAccounts()
+        if accounts.isEmpty {
             binanceWallets = []
             bybitWallets = []
+            bybitEarnPositions = []
             bingxSpotWallets = []
             bingxFuturesWallets = []
             gateioWallets = []
@@ -204,122 +209,152 @@ final class ExchengeViewModel {
             return
         }
 
+        binanceWallets = []
+        bybitWallets = []
+        bybitEarnPositions = []
+        bingxSpotWallets = []
+        bingxFuturesWallets = []
+        gateioWallets = []
+        okxWallets = []
+
         isLoading = true
         let group = DispatchGroup()
 
-        if enabled.contains(.binance) {
-            group.enter()
-            NetworkManager.shared.fetchUserDataBinance { [weak self] result in
-                switch result {
-                case .success(let data):
-                    self?.binanceWallets = data
-                case .failure(let error):
-                    self?.handleFailure(error, exchange: .binance)
+        let binanceAccounts = accounts.filter { $0.exchange == .binance }
+        if binanceAccounts.isEmpty == false {
+            for account in binanceAccounts {
+                guard let keys = APIKeysManager.loadKeys(for: account) else {
+                    APIKeysManager.delete(account: account)
+                    continue
                 }
-                group.leave()
-            }
-        } else {
-            binanceWallets = []
-        }
-
-        if enabled.contains(.bybit) {
-            bybitEarnPositions = []
-            group.enter()
-            NetworkManager.shared.fetchUserDataBybit { [weak self] result in
-                switch result {
-                case .success(let data):
-                    self?.bybitWallets = data.result.list
-                case .failure(let error):
-                    self?.handleFailure(error, exchange: .bybit)
-                }
-                group.leave()
-            }
-
-            let earnCategories = ["FlexibleSaving", "OnChain"]
-            for category in earnCategories {
                 group.enter()
-                NetworkManager.shared.fetchBybitEarnPositions(category: category) { [weak self] result in
+                NetworkManager.shared.fetchUserDataBinance(keys: keys) { [weak self] result in
                     switch result {
                     case .success(let data):
-                        guard data.retCode == 0, let positions = data.result?.list else {
-                            group.leave()
-                            return
-                        }
-                        let items = positions.map {
-                            BybitEarnPositionItem(
-                                category: category,
-                                coin: $0.coin,
-                                amount: $0.amount,
-                                status: $0.status
-                            )
-                        }
-                        self?.bybitEarnPositions.append(contentsOf: items)
-                    case .failure:
-                        break
+                        self?.binanceWallets.append(contentsOf: data)
+                    case .failure(let error):
+                        self?.handleFailure(error, exchange: .binance, account: account)
                     }
                     group.leave()
                 }
             }
-        } else {
-            bybitWallets = []
-            bybitEarnPositions = []
         }
 
-        if enabled.contains(.bingx) {
-            group.enter()
-            NetworkManager.shared.fetchUserDataBingxSpot { [weak self] result in
-                switch result {
-                case .success(let data):
-                    self?.bingxSpotWallets = [data]
-                case .failure(let error):
-                    self?.handleFailure(error, exchange: .bingx)
+        let bybitAccounts = accounts.filter { $0.exchange == .bybit }
+        if bybitAccounts.isEmpty == false {
+            let earnCategories = ["FlexibleSaving", "OnChain"]
+            for account in bybitAccounts {
+                guard let keys = APIKeysManager.loadKeys(for: account) else {
+                    APIKeysManager.delete(account: account)
+                    continue
                 }
-                group.leave()
-            }
 
-            group.enter()
-            NetworkManager.shared.fetchUserDataBingxFutures { [weak self] result in
-                switch result {
-                case .success(let data):
-                    self?.bingxFuturesWallets = [data]
-                case .failure(let error):
-                    self?.handleFailure(error, exchange: .bingx)
+                group.enter()
+                NetworkManager.shared.fetchUserDataBybit(keys: keys) { [weak self] result in
+                    switch result {
+                    case .success(let data):
+                        self?.bybitWallets.append(contentsOf: data.result.list)
+                    case .failure(let error):
+                        self?.handleFailure(error, exchange: .bybit, account: account)
+                    }
+                    group.leave()
                 }
-                group.leave()
+                for category in earnCategories {
+                    group.enter()
+                    NetworkManager.shared.fetchBybitEarnPositions(category: category, keys: keys) { [weak self] result in
+                        switch result {
+                        case .success(let data):
+                            guard data.retCode == 0, let positions = data.result?.list else {
+                                group.leave()
+                                return
+                            }
+                            let items = positions.map {
+                                BybitEarnPositionItem(
+                                    category: category,
+                                    coin: $0.coin,
+                                    amount: $0.amount,
+                                    status: $0.status
+                                )
+                            }
+                            self?.bybitEarnPositions.append(contentsOf: items)
+                        case .failure:
+                            break
+                        }
+                        group.leave()
+                    }
+                }
             }
-        } else {
-            bingxSpotWallets = []
-            bingxFuturesWallets = []
         }
 
-        if enabled.contains(.gateio) {
-            group.enter()
-            NetworkManager.shared.fetchUserDataGateio { [weak self] result in
-                switch result {
-                case .success(let data):
-                    self?.gateioWallets = [data]
-                case .failure(let error):
-                    self?.handleFailure(error, exchange: .gateio)
+        let bingxAccounts = accounts.filter { $0.exchange == .bingx }
+        if bingxAccounts.isEmpty == false {
+            for account in bingxAccounts {
+                guard let keys = APIKeysManager.loadKeys(for: account) else {
+                    APIKeysManager.delete(account: account)
+                    continue
                 }
-                group.leave()
+                group.enter()
+                NetworkManager.shared.fetchUserDataBingxSpot(keys: keys) { [weak self] result in
+                    switch result {
+                    case .success(let data):
+                        self?.bingxSpotWallets.append(data)
+                    case .failure(let error):
+                        self?.handleFailure(error, exchange: .bingx, account: account)
+                    }
+                    group.leave()
+                }
+
+                group.enter()
+                NetworkManager.shared.fetchUserDataBingxFutures(keys: keys) { [weak self] result in
+                    switch result {
+                    case .success(let data):
+                        self?.bingxFuturesWallets.append(data)
+                    case .failure(let error):
+                        self?.handleFailure(error, exchange: .bingx, account: account)
+                    }
+                    group.leave()
+                }
             }
-        } else {
-            gateioWallets = []
         }
 
-        if enabled.contains(.okx) {
-            group.enter()
-            NetworkManager.shared.fetchUserDataOkx { [weak self] result in
-                switch result {
-                case .success(let data):
-                    self?.okxWallets = [data]
-                case .failure(let error):
-                    self?.handleFailure(error, exchange: .okx)
+        let gateioAccounts = accounts.filter { $0.exchange == .gateio }
+        if gateioAccounts.isEmpty == false {
+            for account in gateioAccounts {
+                guard let keys = APIKeysManager.loadKeys(for: account) else {
+                    APIKeysManager.delete(account: account)
+                    continue
                 }
-                group.leave()
+                group.enter()
+                NetworkManager.shared.fetchUserDataGateio(keys: keys) { [weak self] result in
+                    switch result {
+                    case .success(let data):
+                        self?.gateioWallets.append(data)
+                    case .failure(let error):
+                        self?.handleFailure(error, exchange: .gateio, account: account)
+                    }
+                    group.leave()
+                }
             }
-        } else {
-            okxWallets = []
+        }
+
+        let okxAccounts = accounts.filter { $0.exchange == .okx }
+        if okxAccounts.isEmpty == false {
+            for account in okxAccounts {
+                guard let keys = APIKeysManager.loadKeys(for: account) else {
+                    APIKeysManager.delete(account: account)
+                    continue
+                }
+                group.enter()
+                NetworkManager.shared.fetchUserDataOkx(keys: keys) { [weak self] result in
+                    switch result {
+                    case .success(let data):
+                        self?.okxWallets.append(data)
+                    case .failure(let error):
+                        self?.handleFailure(error, exchange: .okx, account: account)
+                    }
+                    group.leave()
+                }
+            }
         }
         
         group.notify(queue: .main) { [weak self] in
@@ -331,33 +366,17 @@ final class ExchengeViewModel {
     private func handleFailure(
         _ error: NetworkError,
         exchange: Exchange,
+        account: ExchangeAccount,
         invalidatesKeys: Bool = true
     ) {
         if invalidatesKeys && error == .malformedRequests {
-            APIKeysManager.delete(for: exchange)
-            clearData(for: exchange)
+            APIKeysManager.delete(account: account)
             NotificationCenter.default.post(name: .apiKeysInvalidated, object: exchange)
             errorMessage = "Invalid API keys for \(exchange.rawValue.capitalized)"
         } else {
             errorMessage = warningMassage(error: error)
         }
         alert = true
-    }
-
-    private func clearData(for exchange: Exchange) {
-        switch exchange {
-        case .binance:
-            binanceWallets = []
-        case .bybit:
-            bybitWallets = []
-        case .bingx:
-            bingxSpotWallets = []
-            bingxFuturesWallets = []
-        case .gateio:
-            gateioWallets = []
-        case .okx:
-            okxWallets = []
-        }
     }
 
     // MARK: - Detail sections
@@ -478,15 +497,19 @@ final class ExchengeViewModel {
     }
 
     private func okxDetailSections() -> [ExchangeDetailSection] {
-        let rows: [ExchangeDetailRow] = okxWallets.first?.data.first?.details.map { detail in
-            let usdtValue = Double(detail.eqUsd)
-            return ExchangeDetailRow(
-                title: detail.ccy,
-                subtitle: "Equity",
-                usdtValue: usdtValue,
-                valueText: usdtValue == nil ? "—" : nil
-            )
-        } ?? []
+        let rows: [ExchangeDetailRow] = okxWallets.flatMap { wallet in
+            wallet.data.flatMap { data in
+                data.details.map { detail in
+                    let usdtValue = Double(detail.eqUsd)
+                    return ExchangeDetailRow(
+                        title: detail.ccy,
+                        subtitle: "Equity",
+                        usdtValue: usdtValue,
+                        valueText: usdtValue == nil ? "—" : nil
+                    )
+                }
+            }
+        }
         return [sectionOrPlaceholder(title: "Assets", rows: rows)]
     }
 

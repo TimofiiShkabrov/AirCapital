@@ -12,7 +12,7 @@ struct SettingsView: View {
     @State private var settingsViewModel = SettingsViewModel()
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             Form {
                 Section("Exchange") {
                     Picker("Choose", selection: $settingsViewModel.selectedExchange) {
@@ -23,6 +23,12 @@ struct SettingsView: View {
                     .onChange(of: settingsViewModel.selectedExchange) {
                         settingsViewModel.loadKeys()
                     }
+                }
+
+                Section("Account") {
+                    TextField("Account Name (optional)", text: $settingsViewModel.accountLabel)
+                        .textInputAutocapitalization(.words)
+                        .autocorrectionDisabled()
                 }
                 
                 Section("API Keys") {
@@ -45,16 +51,27 @@ struct SettingsView: View {
                     Button("Save") {
                         settingsViewModel.saveKeys()
                     }
+                    .buttonStyle(.borderedProminent)
+                    .buttonBorderShape(.capsule)
+                    .glassEffect(.regular, in: Capsule())
                 }
-                Section("Saved Exchanges") {
-                    ForEach(settingsViewModel.savedExchanges, id: \.self) { exchange in
+                Section("Saved Accounts") {
+                    ForEach(settingsViewModel.savedAccounts) { account in
+                        let label = accountLabel(for: account)
                         HStack {
-                            Text(exchange.rawValue.capitalized)
-                                .fontWeight(.medium)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(account.exchange.rawValue.capitalized)
+                                    .fontWeight(.medium)
+                                if label.isEmpty == false {
+                                    Text(label)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
                             
                             Spacer()
                             
-                            if let apiKey = APIKeysManager.load(for: exchange)?.apiKey,
+                            if let apiKey = APIKeysManager.loadKeys(for: account)?.apiKey,
                                !apiKey.isEmpty {
                                 Text("\(apiKey.prefix(4))••••")
                                     .foregroundColor(.secondary)
@@ -64,13 +81,15 @@ struct SettingsView: View {
                     }
                     .onDelete { indexSet in
                         for index in indexSet {
-                            let exchange = settingsViewModel.savedExchanges[index]
-                            APIKeysManager.delete(for: exchange)
+                            let account = settingsViewModel.savedAccounts[index]
+                            APIKeysManager.delete(account: account)
                         }
                     }
                 }
             }
+            .formStyle(.grouped)
             .navigationTitle("Settings API")
+            .navigationBarTitleDisplayMode(.inline)
             .onAppear {
                 settingsViewModel.loadKeys()
             }
@@ -83,4 +102,13 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+}
+
+private func accountLabel(for account: ExchangeAccount) -> String {
+    if let label = account.label, label.isEmpty == false {
+        return label
+    }
+    let accounts = APIKeysManager.accounts(for: account.exchange)
+    let index = accounts.firstIndex(of: account).map { $0 + 1 } ?? 1
+    return "Account \(index)"
 }

@@ -8,6 +8,6 @@
 import Foundation
 
 // MARK: - PriceTickerBinance
-struct PriceTickerBinance: Codable {
+struct PriceTickerBinance: Codable, Sendable {
     let symbol, price: String
 }

@@ -8,14 +8,14 @@
 import Foundation
 
 // MARK: - UserDataOkx
-struct UserDataOkx: Codable {
+struct UserDataOkx: Codable, Sendable {
     let code: String
     let data: [Datum]
     let msg: String
 }
 
 // MARK: - Datum
-struct Datum: Codable {
+struct Datum: Codable, Sendable {
     let adjEq, availEq, borrowFroz: String
     let details: [Detail]
     let imr, isoEq, mgnRatio, mmr: String
@@ -25,7 +25,7 @@ struct Datum: Codable {
 }
 
 // MARK: - Detail
-struct Detail: Codable {
+struct Detail: Codable, Sendable {
     let autoLendStatus, autoLendMTAmt, availBAL, availEq: String
     let borrowFroz, cashBAL, ccy, crossLiab: String
     let colRes: String

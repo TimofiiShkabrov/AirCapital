@@ -8,7 +8,7 @@
 import Foundation
 
 // MARK: - UserDataBybit
-struct UserDataBybit: Codable {
+struct UserDataBybit: Codable, Sendable {
     let retCode: Int
     let retMsg: String
     let result: Result
@@ -22,11 +22,11 @@ struct UserDataBybit: Codable {
     }
     
     // MARK: - Result
-    struct Result: Codable {
+    struct Result: Codable, Sendable {
         let list: [List]
         
         // MARK: - List
-        struct List: Codable {
+        struct List: Codable, Sendable {
             let totalEquity, accountIMRate, accountIMRateByMp, totalMarginBalance: String
             let totalInitialMargin, totalInitialMarginByMp, accountType, totalAvailableBalance: String
             let accountMMRate, accountMMRateByMp, totalPerpUPL, totalWalletBalance: String
@@ -36,7 +36,7 @@ struct UserDataBybit: Codable {
     }
     
     // MARK: - Coin
-    struct Coin: Codable {
+    struct Coin: Codable, Sendable {
         let availableToBorrow, bonus, accruedInterest, availableToWithdraw: String
         let totalOrderIM, equity, totalPositionMM, usdValue: String
         let spotHedgingQty, unrealisedPnl: String
@@ -48,23 +48,23 @@ struct UserDataBybit: Codable {
     }
     
     // MARK: - RetEXTInfo
-    struct RetEXTInfo: Codable {
+    struct RetEXTInfo: Codable, Sendable {
     }
 }
 
 // MARK: - Bybit Earn Positions
-struct BybitEarnPositionResponse: Codable {
+struct BybitEarnPositionResponse: Codable, Sendable {
     let retCode: Int
     let retMsg: String
     let result: Result?
     let retExtInfo: RetExtInfo?
     let time: Int?
 
-    struct Result: Codable {
+    struct Result: Codable, Sendable {
         let list: [Position]
     }
 
-    struct Position: Codable {
+    struct Position: Codable, Sendable {
         let coin: String
         let productId: String?
         let amount: String
@@ -79,6 +79,6 @@ struct BybitEarnPositionResponse: Codable {
         let settlementTime: String?
     }
 
-    struct RetExtInfo: Codable {
+    struct RetExtInfo: Codable, Sendable {
     }
 }

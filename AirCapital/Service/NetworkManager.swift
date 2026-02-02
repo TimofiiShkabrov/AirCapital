@@ -38,7 +38,7 @@ enum Link {
     }
 }
 
-enum NetworkError: Error {
+enum NetworkError: Error, Sendable {
     case noData
     case decodingError
     case tooManyRequests
@@ -52,25 +52,26 @@ enum NetworkError: Error {
 }
 
 @Observable
-final class NetworkManager {
+final class NetworkManager: @unchecked Sendable {
     static let shared = NetworkManager()
     private init() {}
     
-    private func request<T: Decodable>(
+    private func request<T: Decodable & Sendable>(
         _ url: URL,
         method: HTTPMethod = .get,
         headers: HTTPHeaders? = nil,
         completion: @escaping (Result<T, NetworkError>) -> Void
     ) {
+        let completionBox = UncheckedSendable(completion)
         AF.request(url, method: method, headers: headers)
             .validate()
             .responseDecodable(of: T.self, decoder: JSONDecoder()) { response in
                 switch response.result {
                 case .success(let decoded):
-                    completion(.success(decoded))
+                    completionBox.value(.success(decoded))
                 case .failure(_):
                     let code = response.response?.statusCode ?? -1
-                    completion(.failure(mapError(code)))
+                    completionBox.value(.failure(mapError(code)))
                 }
             }
     }
@@ -87,13 +88,10 @@ final class NetworkManager {
         request(url, completion: completion)
     }
     
-    func fetchUserDataBinance(completion: @escaping (Result<[UserDataBinance], NetworkError>) -> Void) {
-        
-        guard let keys = APIKeysManager.load(for: .binance) else {
-            completion(.failure(.exchengeError))
-            return
-        }
-        
+    func fetchUserDataBinance(
+        keys: APIKeys,
+        completion: @escaping (Result<[UserDataBinance], NetworkError>) -> Void
+    ) {
         let timestamp = Int(Date().timeIntervalSince1970 * 1000)
         let recvWindow = 5000
         let queryString = "quoteAsset=USDT&timestamp=\(timestamp)&recvWindow=\(recvWindow)"
@@ -109,13 +107,10 @@ final class NetworkManager {
     }
     
     // MARK: - Bybit API
-    func fetchUserDataBybit(completion: @escaping (Result<UserDataBybit, NetworkError>) -> Void) {
-        
-        guard let keys = APIKeysManager.load(for: .bybit) else {
-            completion(.failure(.exchengeError))
-            return
-        }
-        
+    func fetchUserDataBybit(
+        keys: APIKeys,
+        completion: @escaping (Result<UserDataBybit, NetworkError>) -> Void
+    ) {
         let timestamp = Int(Date().timeIntervalSince1970 * 1000)
         let recvWindow = 5000
         let queryString = "accountType=UNIFIED"
@@ -142,13 +137,9 @@ final class NetworkManager {
 
     func fetchBybitEarnPositions(
         category: String,
+        keys: APIKeys,
         completion: @escaping (Result<BybitEarnPositionResponse, NetworkError>) -> Void
     ) {
-        guard let keys = APIKeysManager.load(for: .bybit) else {
-            completion(.failure(.exchengeError))
-            return
-        }
-
         let timestamp = Int(Date().timeIntervalSince1970 * 1000)
         let recvWindow = 5000
         let queryString = "category=\(category)"
@@ -174,13 +165,10 @@ final class NetworkManager {
     }
     
     // MARK: - Bingx API
-    func fetchUserDataBingxSpot(completion: @escaping (Result<UserDataBingxSpot, NetworkError>) -> Void) {
-        
-        guard let keys = APIKeysManager.load(for: .bingx) else {
-            completion(.failure(.exchengeError))
-            return
-        }
-        
+    func fetchUserDataBingxSpot(
+        keys: APIKeys,
+        completion: @escaping (Result<UserDataBingxSpot, NetworkError>) -> Void
+    ) {
         let timestamp = Int(Date().timeIntervalSince1970 * 1000)
         let recvWindow = 5000
         let path = "/openApi/spot/v1/account/balance"
@@ -197,13 +185,10 @@ final class NetworkManager {
         request(url, method: .get, headers: headers, completion: completion)
     }
     
-    func fetchUserDataBingxFutures(completion: @escaping (Result<UserDataBingxFutures, NetworkError>) -> Void) {
-        
-        guard let keys = APIKeysManager.load(for: .bingx) else {
-            completion(.failure(.exchengeError))
-            return
-        }
-        
+    func fetchUserDataBingxFutures(
+        keys: APIKeys,
+        completion: @escaping (Result<UserDataBingxFutures, NetworkError>) -> Void
+    ) {
         let timestamp = Int(Date().timeIntervalSince1970 * 1000)
         let recvWindow = 5000
         let path = "/openApi/swap/v3/user/balance"
@@ -221,13 +206,10 @@ final class NetworkManager {
     }
     
     // MARK: - Gateio API
-    func fetchUserDataGateio(completion: @escaping (Result<UserDataGateio, NetworkError>) -> Void) {
-        
-        guard let keys = APIKeysManager.load(for: .gateio) else {
-            completion(.failure(.exchengeError))
-            return
-        }
-        
+    func fetchUserDataGateio(
+        keys: APIKeys,
+        completion: @escaping (Result<UserDataGateio, NetworkError>) -> Void
+    ) {
         let timestamp = String(Int(Date().timeIntervalSince1970))
         let method = "GET"
         let path = "/api/v4/wallet/total_balance"
@@ -254,13 +236,10 @@ final class NetworkManager {
     }
     
     // MARK: - OKX API
-    func fetchUserDataOkx(completion: @escaping (Result<UserDataOkx, NetworkError>) -> Void) {
-        
-        guard let keys = APIKeysManager.load(for: .okx) else {
-            completion(.failure(.exchengeError))
-            return
-        }
-        
+    func fetchUserDataOkx(
+        keys: APIKeys,
+        completion: @escaping (Result<UserDataOkx, NetworkError>) -> Void
+    ) {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let timestamp = formatter.string(from: Date())
@@ -287,5 +266,13 @@ final class NetworkManager {
             "x-simulated-trading": "0"
         ]
         request(url, method: .get, headers: headers, completion: completion)
+    }
+}
+
+private struct UncheckedSendable<Value>: @unchecked Sendable {
+    let value: Value
+
+    init(_ value: Value) {
+        self.value = value
     }
 }

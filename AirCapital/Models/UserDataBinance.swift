@@ -8,7 +8,7 @@
 import Foundation
 
 // MARK: - UserDataBinance
-struct UserDataBinance: Codable {
+struct UserDataBinance: Codable, Sendable {
     let activate: Bool
     let balance, walletName: String
 }
