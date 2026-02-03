@@ -11,19 +11,30 @@ struct ExchangeView: View {
     @Bindable var exchangeViewModel: ExchengeViewModel
     @Binding var showSettings: Bool
     @State private var selectedAccount: ExchangeAccount?
+    @State private var totalSnapshots: [BalanceSnapshot] = []
+    @State private var selectedRange: ChartRange = .day
 
     var body: some View {
         let accounts = exchangeViewModel.enabledAccounts
-
         NavigationSplitView {
             List(selection: $selectedAccount) {
                 Section("Total Balance") {
-                    LabeledContent {
-                        Text("\(exchangeViewModel.totalBalanceUSDT, specifier: "%.2f") USDT")
-                            .font(.title3.weight(.semibold))
-                            .monospacedDigit()
-                    } label: {
-                        Text("All Accounts")
+                    VStack(alignment: .leading, spacing: 12) {
+                        Picker("Range", selection: $selectedRange) {
+                            ForEach(ChartRange.allCases) { range in
+                                Text(range.rawValue).tag(range)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        LabeledContent {
+                            Text("\(exchangeViewModel.totalBalanceUSDT, specifier: "%.2f") USDT")
+                                .font(.title3.weight(.semibold))
+                                .monospacedDigit()
+                        } label: {
+                            Text("All Accounts")
+                        }
+                        BalanceChartView(snapshots: totalSnapshots, range: selectedRange)
                     }
                     .listRowBackground(
                         RoundedRectangle(cornerRadius: 16, style: .continuous)
@@ -76,12 +87,24 @@ struct ExchangeView: View {
         }
         .task {
             exchangeViewModel.loadData()
+            await reloadSnapshots()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .balanceSnapshotsUpdated)) { _ in
+            Task { await reloadSnapshots() }
+        }
+        .onChange(of: selectedRange) { _, _ in
+            // Filtering is local; no reload needed.
         }
         .onChange(of: accounts) { _, newValue in
             if let selected = selectedAccount, newValue.contains(selected) == false {
                 selectedAccount = nil
             }
         }
+    }
+
+    @MainActor
+    private func reloadSnapshots() async {
+        totalSnapshots = await BalanceHistoryStore.shared.snapshots(for: .total)
     }
 
     private func accountRow(for account: ExchangeAccount) -> some View {

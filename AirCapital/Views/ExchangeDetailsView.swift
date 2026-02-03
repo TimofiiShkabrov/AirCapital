@@ -11,6 +11,8 @@ struct ExchangeDetailsView: View {
     let account: ExchangeAccount
     @Bindable var exchangeViewModel: ExchengeViewModel
     @State private var path: [WalletTypeSection] = []
+    @State private var accountSnapshots: [BalanceSnapshot] = []
+    @State private var selectedRange: ChartRange = .day
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -23,6 +25,23 @@ struct ExchangeDetailsView: View {
                         .padding(.horizontal, 16)
                 } header: {
                     sectionHeader("Overview")
+                }
+
+                Section {
+                    Picker("Range", selection: $selectedRange) {
+                        ForEach(ChartRange.allCases) { range in
+                            Text(range.rawValue).tag(range)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+
+                    BalanceChartView(snapshots: filteredAccountSnapshots, range: selectedRange)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .padding(.horizontal, 16)
+                } header: {
+                    sectionHeader("Balance")
                 }
 
                 Section {
@@ -56,6 +75,19 @@ struct ExchangeDetailsView: View {
                 WalletTypeDetailView(section: section, valueText: valueText(for:))
             }
         }
+        .task {
+            accountSnapshots = await BalanceHistoryStore.shared.snapshots(for: .account(account.id))
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .balanceSnapshotsUpdated)) { _ in
+            Task {
+                accountSnapshots = await BalanceHistoryStore.shared.snapshots(for: .account(account.id))
+            }
+        }
+    }
+
+    private var filteredAccountSnapshots: [BalanceSnapshot] {
+        let startDate = selectedRange.startDate()
+        return accountSnapshots.filter { $0.timestamp >= startDate }
     }
 
     private func valueText(for row: ExchangeDetailRow) -> String {

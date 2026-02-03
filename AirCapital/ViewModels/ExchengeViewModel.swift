@@ -8,6 +8,7 @@
 import Foundation
 import Observation
 
+@MainActor
 @Observable
 final class ExchengeViewModel {
     var binanceWalletsByAccount: [UUID: [UserDataBinance]] = [:]
@@ -418,9 +419,29 @@ final class ExchengeViewModel {
         }
         
         group.notify(queue: .main) { [weak self] in
-            self?.isLoading = false
-            completion?()
+            self?.finishLoad(completion: completion)
         }
+    }
+
+    private func finishLoad(completion: (() -> Void)?) {
+        isLoading = false
+        let accounts = enabledAccounts
+        var balances: [UUID: Double] = [:]
+        var exchangeTotals: [Exchange: Double] = [:]
+        for account in accounts {
+            let balance = balanceUSDT(for: account)
+            balances[account.id] = balance
+            exchangeTotals[account.exchange, default: 0] += balance
+        }
+        Task {
+            await BalanceHistoryStore.shared.addSnapshots(
+                total: totalBalanceUSDT,
+                accounts: accounts,
+                balances: balances,
+                exchangeTotals: exchangeTotals
+            )
+        }
+        completion?()
     }
 
     private func handleFailure(
