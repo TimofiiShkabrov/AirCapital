@@ -13,9 +13,11 @@ struct ExchangeView: View {
     @State private var selectedAccount: ExchangeAccount?
     @State private var totalSnapshots: [BalanceSnapshot] = []
     @State private var selectedRange: ChartRange = .day
+    @State private var showInitialLoading = true
 
     var body: some View {
         let accounts = exchangeViewModel.enabledAccounts
+        let isShowingLoading = exchangeViewModel.isLoading || showInitialLoading
         NavigationSplitView {
             List(selection: $selectedAccount) {
                 Section("Total Balance") {
@@ -76,17 +78,24 @@ struct ExchangeView: View {
             detailsPane(for: accounts)
         }
         .overlay {
-            if exchangeViewModel.isLoading {
-                ProgressView()
+            if isShowingLoading {
+                DepositLoadingView()
+                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: isShowingLoading)
         .alert("Error", isPresented: $exchangeViewModel.alert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text(exchangeViewModel.errorMessage)
         }
         .task {
-            exchangeViewModel.loadData()
+            await withCheckedContinuation { continuation in
+                exchangeViewModel.loadData {
+                    showInitialLoading = false
+                    continuation.resume()
+                }
+            }
             await reloadSnapshots()
         }
         .onReceive(NotificationCenter.default.publisher(for: .balanceSnapshotsUpdated)) { _ in
