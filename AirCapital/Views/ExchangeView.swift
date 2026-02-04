@@ -18,64 +18,98 @@ struct ExchangeView: View {
     var body: some View {
         let accounts = exchangeViewModel.enabledAccounts
         let isShowingLoading = exchangeViewModel.isLoading || showInitialLoading
-        NavigationSplitView {
-            List(selection: $selectedAccount) {
-                Section("Total Balance") {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Picker("Range", selection: $selectedRange) {
-                            ForEach(ChartRange.allCases) { range in
-                                Text(range.rawValue).tag(range)
+        ZStack {
+            LiquidBackground()
+            NavigationSplitView {
+                List(selection: $selectedAccount) {
+                    Section {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Picker("Range", selection: $selectedRange) {
+                                ForEach(ChartRange.allCases) { range in
+                                    Text(range.rawValue).tag(range)
+                                }
                             }
-                        }
-                        .pickerStyle(.segmented)
+                            .pickerStyle(.segmented)
 
-                        LabeledContent {
-                            Text("\(exchangeViewModel.totalBalanceUSDT, specifier: "%.2f") USDT")
-                                .font(.title3.weight(.semibold))
-                                .monospacedDigit()
+                            LabeledContent {
+                                Text("\(exchangeViewModel.totalBalanceUSDT, specifier: "%.2f") USDT")
+                                    .font(.title3.weight(.semibold))
+                                    .monospacedDigit()
+                            } label: {
+                                Text("All Accounts")
+                            }
+                            BalanceChartView(snapshots: totalSnapshots, range: selectedRange)
+                        }
+                        .padding(.vertical, 6)
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .padding(.horizontal, 16)
+                        .background(
+                            LiquidSurface(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                        )
+                    } header: {
+                        LiquidSectionHeader(title: "Total Balance")
+                    }
+
+                    Section {
+                        ForEach(accounts) { account in
+                            NavigationLink(value: account) {
+                                accountRow(for: account)
+                            }
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 4)
+                            .background(
+                                LiquidSurface(
+                                    shape: RoundedRectangle(cornerRadius: 18, style: .continuous),
+                                    shadow: false,
+                                    shadowRadius: 0,
+                                    shadowY: 0
+                                )
+                            )
+                        }
+                    } header: {
+                        LiquidSectionHeader(title: "Accounts")
+                    }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(
+                    LiquidBackground()
+                )
+                .background(Color.clear)
+                .navigationTitle("AirCapital")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            showSettings.toggle()
                         } label: {
-                            Text("All Accounts")
-                        }
-                        BalanceChartView(snapshots: totalSnapshots, range: selectedRange)
-                    }
-                    .listRowBackground(
-                        RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .glassEffect(.regular, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    )
-                }
-
-                Section("Accounts") {
-                    ForEach(accounts) { account in
-                        NavigationLink(value: account) {
-                            accountRow(for: account)
+                            Image(systemName: "gear")
+                                .foregroundStyle(.primary)
                         }
                     }
                 }
-            }
-            .navigationTitle("AirCapital")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showSettings.toggle()
-                    } label: {
-                        Image(systemName: "gear")
-                            .foregroundStyle(.primary)
+                .refreshable {
+                    await withCheckedContinuation { continuation in
+                        exchangeViewModel.loadData {
+                            continuation.resume()
+                        }
                     }
                 }
-            }
-            .refreshable {
-                await withCheckedContinuation { continuation in
-                    exchangeViewModel.loadData {
-                        continuation.resume()
-                    }
+                .navigationDestination(for: ExchangeAccount.self) { account in
+                    ExchangeDetailsView(account: account, exchangeViewModel: exchangeViewModel)
                 }
+            } detail: {
+                detailsPane(for: accounts)
             }
-            .navigationDestination(for: ExchangeAccount.self) { account in
-                ExchangeDetailsView(account: account, exchangeViewModel: exchangeViewModel)
-            }
-        } detail: {
-            detailsPane(for: accounts)
+            .background(
+                LiquidBackground()
+            )
+            .background(Color.clear)
         }
         .overlay {
             if isShowingLoading {
@@ -149,6 +183,8 @@ struct ExchangeView: View {
                 systemImage: "creditcard",
                 description: Text("Add an exchange in Settings.")
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.clear)
         } else if let account = selectedAccount {
             ExchangeDetailsView(account: account, exchangeViewModel: exchangeViewModel)
         } else {
@@ -157,6 +193,8 @@ struct ExchangeView: View {
                 systemImage: "bitcoinsign.circle",
                 description: Text("Choose an account from the list.")
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.clear)
         }
     }
 

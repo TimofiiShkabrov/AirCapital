@@ -11,6 +11,7 @@ struct WalletTypeRowView: View {
     let section: WalletTypeSection
     let isFirst: Bool
     let isLast: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         HStack(spacing: 12) {
@@ -33,8 +34,14 @@ struct WalletTypeRowView: View {
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
-        .background(rowShape.fill(Color(.secondarySystemBackground)))
-        .overlay(rowShape.stroke(Color(.separator).opacity(0.35), lineWidth: 1))
+        .background(
+            LiquidSurface(
+                shape: rowShape,
+                shadow: false,
+                shadowRadius: 0,
+                shadowY: 0
+            )
+        )
         .overlay(separatorOverlay, alignment: .bottom)
         .contentShape(Rectangle())
     }
@@ -58,7 +65,7 @@ struct WalletTypeRowView: View {
     private var separatorOverlay: some View {
         if isLast == false {
             Divider()
-                .overlay(Color(.separator).opacity(0.35))
+                .overlay(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.2))
                 .padding(.leading, 56)
         }
     }

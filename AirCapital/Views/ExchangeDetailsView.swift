@@ -15,64 +15,84 @@ struct ExchangeDetailsView: View {
     @State private var selectedRange: ChartRange = .day
 
     var body: some View {
-        NavigationStack(path: $path) {
-            List {
-                Section {
-                    overviewCard
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .padding(.horizontal, 16)
-                } header: {
-                    sectionHeader("Overview")
-                }
-
-                Section {
-                    Picker("Range", selection: $selectedRange) {
-                        ForEach(ChartRange.allCases) { range in
-                            Text(range.rawValue).tag(range)
-                        }
+        ZStack {
+            LiquidBackground()
+            NavigationStack(path: $path) {
+                List {
+                    Section {
+                        overviewCard
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .padding(.horizontal, 16)
+                    } header: {
+                        LiquidSectionHeader(title: "Overview")
                     }
-                    .pickerStyle(.segmented)
 
-                    BalanceChartView(snapshots: filteredAccountSnapshots, range: selectedRange)
+                    Section {
+                        Picker("Range", selection: $selectedRange) {
+                            ForEach(ChartRange.allCases) { range in
+                                Text(range.rawValue).tag(range)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(8)
                         .listRowInsets(EdgeInsets())
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
                         .padding(.horizontal, 16)
-                } header: {
-                    sectionHeader("Balance")
-                }
-
-                Section {
-                    let sections = exchangeViewModel.walletTypeSections(for: account)
-                    ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
-                        Button {
-                            path.append(section)
-                        } label: {
-                            WalletTypeRowView(
-                                section: section,
-                                isFirst: index == 0,
-                                isLast: index == sections.count - 1
+                        .background(
+                            LiquidSurface(
+                                shape: RoundedRectangle(cornerRadius: 18, style: .continuous),
+                                shadow: false,
+                                shadowRadius: 0,
+                                shadowY: 0
                             )
-                        }
-                        .buttonStyle(.plain)
-                        .listRowInsets(EdgeInsets())
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        .padding(.horizontal, 16)
+                        )
+
+                        BalanceChartView(snapshots: filteredAccountSnapshots, range: selectedRange)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .padding(.horizontal, 16)
+                            .background(
+                                LiquidSurface(shape: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                            )
+                    } header: {
+                        LiquidSectionHeader(title: "Balance")
                     }
-                } header: {
-                    sectionHeader("Wallets")
+
+                    Section {
+                        let sections = exchangeViewModel.walletTypeSections(for: account)
+                        ForEach(Array(sections.enumerated()), id: \.element.id) { index, section in
+                            Button {
+                                path.append(section)
+                            } label: {
+                                WalletTypeRowView(
+                                    section: section,
+                                    isFirst: index == 0,
+                                    isLast: index == sections.count - 1
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
+                            .padding(.horizontal, 16)
+                        }
+                    } header: {
+                        LiquidSectionHeader(title: "Wallets")
+                    }
                 }
-            }
-            .listStyle(.plain)
-            .scrollContentBackground(.hidden)
-            .background(Color(.systemBackground))
-            .navigationTitle(account.exchange.rawValue.capitalized)
-            .navigationBarTitleDisplayMode(.inline)
-            .navigationDestination(for: WalletTypeSection.self) { section in
-                WalletTypeDetailView(section: section, valueText: valueText(for:))
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .navigationTitle(account.exchange.rawValue.capitalized)
+                .navigationBarTitleDisplayMode(.inline)
+                .navigationDestination(for: WalletTypeSection.self) { section in
+                    WalletTypeDetailView(section: section, valueText: valueText(for:))
+                }
             }
         }
         .task {
@@ -123,22 +143,8 @@ struct ExchangeDetailsView: View {
         .padding(.vertical, 12)
         .padding(.horizontal, 16)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
+            LiquidSurface(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
         )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color(.separator).opacity(0.35), lineWidth: 1)
-        )
-    }
-
-
-    private func sectionHeader(_ title: String) -> some View {
-        Text(title)
-            .font(.headline)
-            .foregroundStyle(.secondary)
-            .padding(.leading, 16)
-            .padding(.top, 8)
     }
 }
 

@@ -11,6 +11,7 @@ import Charts
 struct BalanceChartView: View {
     let snapshots: [BalanceSnapshot]
     let range: ChartRange
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -24,20 +25,27 @@ struct BalanceChartView: View {
                 let points = chartPoints(from: snapshots, range: range)
                 let yDomain = yDomain(for: points)
                 let yAxisValues = yAxisValues(for: yDomain, desiredCount: 4)
+                let lineGradient = LinearGradient(
+                    colors: [Color.cyan, Color.teal],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                let areaTop = colorScheme == .dark ? Color.cyan.opacity(0.38) : Color.cyan.opacity(0.28)
+                let gridColor = colorScheme == .dark ? Color.white.opacity(0.12) : Color.black.opacity(0.08)
                 Chart(points) { point in
                     LineMark(
                         x: .value("Time", point.timestamp),
                         y: .value("Balance", point.balanceUSDT)
                     )
                     .interpolationMethod(.catmullRom)
-                    .foregroundStyle(Color.blue)
+                    .foregroundStyle(lineGradient)
                     AreaMark(
                         x: .value("Time", point.timestamp),
                         y: .value("Balance", point.balanceUSDT)
                     )
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(.linearGradient(
-                        colors: [Color.blue.opacity(0.35), .clear],
+                        colors: [areaTop, .clear],
                         startPoint: .top,
                         endPoint: .bottom
                     ))
@@ -50,11 +58,16 @@ struct BalanceChartView: View {
                 .chartYAxis {
                     AxisMarks(position: .leading, values: yAxisValues) { _ in
                         AxisGridLine()
+                            .foregroundStyle(gridColor)
                         AxisValueLabel()
                     }
                 }
                 .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: 4))
+                    AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                        AxisGridLine()
+                            .foregroundStyle(gridColor)
+                        AxisValueLabel()
+                    }
                 }
                 .frame(height: 160)
             }

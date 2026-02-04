@@ -10,28 +10,18 @@ import SwiftUI
 struct DepositLoadingView: View {
     @State private var spin = false
     @State private var pulse = false
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ZStack {
-            Rectangle()
-                .fill(.ultraThinMaterial)
+            LiquidBackground()
+                .overlay(Color.black.opacity(colorScheme == .dark ? 0.45 : 0.2))
                 .ignoresSafeArea()
-
-            LinearGradient(
-                colors: [
-                    Color.black.opacity(0.18),
-                    Color.clear,
-                    Color.black.opacity(0.12)
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .ignoresSafeArea()
 
             VStack(spacing: 18) {
                 ZStack {
                     Circle()
-                        .stroke(.white.opacity(0.18), lineWidth: 10)
+                        .stroke(.white.opacity(colorScheme == .dark ? 0.14 : 0.18), lineWidth: 10)
                         .frame(width: 86, height: 86)
 
                     Circle()
@@ -66,7 +56,7 @@ struct DepositLoadingView: View {
                 VStack(spacing: 10) {
                     HStack(spacing: 12) {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(.white.opacity(0.18))
+                            .fill(.white.opacity(colorScheme == .dark ? 0.12 : 0.18))
                             .frame(width: 38, height: 38)
                             .overlay(
                                 Image(systemName: "chart.line.uptrend.xyaxis")
@@ -84,7 +74,7 @@ struct DepositLoadingView: View {
 
                     HStack(spacing: 12) {
                         RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .fill(.white.opacity(0.18))
+                            .fill(.white.opacity(colorScheme == .dark ? 0.12 : 0.18))
                             .frame(width: 38, height: 38)
                             .overlay(
                                 Image(systemName: "bitcoinsign.circle.fill")
@@ -103,12 +93,12 @@ struct DepositLoadingView: View {
             }
             .padding(24)
             .background(
-                RoundedRectangle(cornerRadius: 28, style: .continuous)
-                    .fill(.ultraThinMaterial)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 28, style: .continuous)
-                            .stroke(.white.opacity(0.2), lineWidth: 1)
-                    )
+                LiquidSurface(
+                    shape: RoundedRectangle(cornerRadius: 28, style: .continuous),
+                    shadow: false,
+                    shadowRadius: 0,
+                    shadowY: 0
+                )
             )
             .shadow(color: .black.opacity(0.2), radius: 28, x: 0, y: 18)
             .padding(.horizontal, 24)
@@ -125,10 +115,11 @@ private struct ShimmerBar: View {
     let width: CGFloat
     let height: CGFloat
     @State private var phase: CGFloat = -1
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         RoundedRectangle(cornerRadius: height / 2, style: .continuous)
-            .fill(.white.opacity(0.14))
+            .fill(.white.opacity(colorScheme == .dark ? 0.1 : 0.14))
             .frame(width: width, height: height)
             .overlay {
                 GeometryReader { proxy in
@@ -136,7 +127,7 @@ private struct ShimmerBar: View {
                     LinearGradient(
                         colors: [
                             .clear,
-                            .white.opacity(0.5),
+                            .white.opacity(colorScheme == .dark ? 0.4 : 0.5),
                             .clear
                         ],
                         startPoint: .leading,

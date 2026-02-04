@@ -10,22 +10,25 @@ import SwiftUI
 struct WalletTypeDetailView: View {
     let section: WalletTypeSection
     let valueText: (ExchangeDetailRow) -> String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        List {
-            Section {
-                rowsCard
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    .padding(.horizontal, 16)
+        ZStack {
+            LiquidBackground()
+            List {
+                Section {
+                    rowsCard
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .padding(.horizontal, 16)
+                }
             }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .navigationTitle(section.title)
+            .navigationBarTitleDisplayMode(.inline)
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color(.systemBackground))
-        .navigationTitle(section.title)
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var rowsCard: some View {
@@ -34,19 +37,14 @@ struct WalletTypeDetailView: View {
                 detailRow(row)
                 if index < section.rows.count - 1 {
                     Divider()
-                        .overlay(Color(.separator).opacity(0.35))
+                        .overlay(Color.white.opacity(colorScheme == .dark ? 0.08 : 0.2))
                 }
             }
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 16)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color(.separator).opacity(0.35), lineWidth: 1)
+            LiquidSurface(shape: RoundedRectangle(cornerRadius: 24, style: .continuous))
         )
     }
 
